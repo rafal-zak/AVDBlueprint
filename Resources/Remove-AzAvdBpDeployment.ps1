@@ -67,14 +67,6 @@ $RemovalScope | ForEach-Object {
         }
     }
 
-    if ($PurgeKeyVault)
-    {
-        $KeyVaultToPurge = Get-AzKeyVault -ResourceGroupName $RemovalScope.ResourceGroupName
-        Write-Verbose "Found '$($KeyVaultToPurge.VaultName)' Key Vault"
-        Remove-AzKeyVault -VaultName $KeyVaultToPurge.VaultName -Location $RemovalScope.Location -Force
-        Remove-AzKeyVault -InRemovedState -VaultName $KeyVaultToPurge.VaultName -Location $RemovalScope.Location -Force
-    }
-    
     $hp = Get-AzWvdHostPool -ResourceGroupName $ThisRG.ResourceGroupName
     Write-Verbose "Found $($hp.count) Host Pools"
     $hp | ForEach-Object {
@@ -117,6 +109,13 @@ $RemovalScope | ForEach-Object {
         }
     }
    
+    if ($PurgeKeyVault)
+    {
+        $KeyVaultToPurge = Get-AzKeyVault -ResourceGroupName $RemovalScope.ResourceGroupName
+        Write-Verbose "Found '$($KeyVaultToPurge.VaultName)' Key Vault"
+        Remove-AzKeyVault -VaultName $KeyVaultToPurge.VaultName -Location $RemovalScope.Location -Force
+        Remove-AzKeyVault -InRemovedState -VaultName $KeyVaultToPurge.VaultName -Location $RemovalScope.Location -Force
+    }
 
     if($PSCmdlet.ShouldProcess($_.ResourceGroupName, "Remove ResourceGroup")){
         $_ | Remove-AzResourceGroup -Force -AsJob
