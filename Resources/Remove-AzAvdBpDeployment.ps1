@@ -48,7 +48,10 @@ Param(
     [switch] $DisableLogExport,
     #Path to the folder where the target environment's logs should be copied
     [Parameter(Mandatory=$true, ParameterSetName="LogExport")]
-    [string] $LogPath
+    [string] $LogPath,
+    #Switch to purge key vault, not just soft delete
+    [Parameter()]
+    [Switch] $PurgeKeyVault
 )
 
 $RemovalScope = Get-AzResourceGroup | Where-Object {$_.ResourceGroupName -like "$($Prefix)*"} 
@@ -64,6 +67,14 @@ $RemovalScope | ForEach-Object {
         }
     }
 
+    if ($PurgeKeyVault)
+    {
+        $KeyVaultToPurge = Get-AzKeyVault -ResourceGroupName $RemovalScope.ResourceGroupName
+        Write-Verbose "Found '$($KeyVaultToPurge.VaultName)' Key Vault"
+        Remove-AzKeyVault -VaultName $KeyVaultToPurge.VaultName -Location $RemovalScope.Location -Force
+        Remove-AzKeyVault -InRemovedState -VaultName $KeyVaultToPurge.VaultName -Location $RemovalScope.Location -Force
+    }
+    
     $hp = Get-AzWvdHostPool -ResourceGroupName $ThisRG.ResourceGroupName
     Write-Verbose "Found $($hp.count) Host Pools"
     $hp | ForEach-Object {
