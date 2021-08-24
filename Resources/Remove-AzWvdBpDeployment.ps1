@@ -105,7 +105,16 @@ $RemovalScope | ForEach-Object {
             $logdata.Results | Export-Csv -Path $ExportFile
         }
     }
-   
+    $KeyVaultToPurge = Get-AzKeyVault -ResourceGroupName $RemovalScope.ResourceGroupName
+
+    if ($KeyVaultToPurge)
+    {
+        Write-Verbose "Found '$($KeyVaultToPurge.VaultName)' Key Vault"
+        # Delete keyvault - leaves it in a soft delete instance
+        Remove-AzKeyVault -VaultName $KeyVaultToPurge.VaultName -Location $RemovalScope.Location -Force
+        #Remove the soft delete instance of the Keyvault
+        Remove-AzKeyVault -InRemovedState -VaultName $KeyVaultToPurge.VaultName -Location $RemovalScope.Location -Force
+    }
 
     if($PSCmdlet.ShouldProcess($_.ResourceGroupName, "Remove ResourceGroup")){
         $_ | Remove-AzResourceGroup -Force -AsJob
