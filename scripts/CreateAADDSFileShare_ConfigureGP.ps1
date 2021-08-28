@@ -7,7 +7,13 @@ Param(
     [string] $StorageAccountName,
 
     [Parameter(Mandatory=$true)]
-    [string] $ScriptURI
+    [string] $ScriptURI,
+
+    [Parameter(Mandatory=$true)]
+    [string] $AzureEnvironmentName,
+
+    [Parameter(Mandatory=$true)]
+    [string] $AzureStorageFQDN
 )
 #Install RSAT-AD Tools, GP Tools, Az PS, and download components
 Install-WindowsFeature -name GPMC
@@ -26,13 +32,19 @@ $Scriptblock = {
     [string] $StorageAccountName,
     
     [Parameter(Mandatory=$true,Position=2)]
-    [string] $ScriptURI
+    [string] $ScriptURI,
+
+    [Parameter(Mandatory=$true,Position=3)]
+    [string] $AzureEnvironmentName,
+
+    [Parameter(Mandatory=$true,Position=4)]
+    [string] $AzureStorageFQDN
     )
     
     Start-Transcript -OutputDirectory C:\Windows\Temp
         
     #Login with Managed Identity
-    Connect-AzAccount -Identity
+    Connect-AzAccount -Identity -Environment $AzureEnvironmentName
 
     whoami | Out-File -append c:\windows\temp\innercontext.txt
 
@@ -82,7 +94,7 @@ $Scriptblock = {
     $credential = New-Object System.Management.Automation.PSCredential -ArgumentList "Azure\$($storageAccount.StorageAccountName)", $SecureKey
 
     #Mount share to set NTFS ACLs
-    $StorageFQDN = "$($StorageAccount.StorageAccountName).file.core.windows.net"
+    $StorageFQDN = "$($StorageAccount.StorageAccountName).$AzureStorageFQDN"
     $StorageUNC = "\\$StorageFQDN\$($StorageShare.Name)"
     New-PSDrive -Name Z -PSProvider FileSystem -Root $StorageUNC -Credential $credential
 
@@ -120,7 +132,7 @@ $Scriptblock = {
 
 ############# Group Policy and FSLogix Session Host Section #################
     
-Connect-AzAccount -Identity
+Connect-AzAccount -Identity -Environment $AzureEnvironmentName
 
 # Set up a log to measure GP settings time to complete
 $CTempPath = 'C:\Temp'
@@ -144,21 +156,13 @@ $VDOTZIP = "$CTempPath\VDOT.zip"
 
 #Test if VDOT has run before and if it has not, run it
 If(-not(Test-Path "$env:SystemRoot\System32\Winevt\Logs\Virtual Desktop Optimization.evtx")){
-    Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope LocalMachine -Force
+    Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope Process -Force
     New-Item -ItemType Directory -Path $CTempPath -ErrorAction SilentlyContinue
     Copy-Item "$SoftwareShare\VDOT.zip" $CTempPath
     Expand-Archive -Path $VDOTZIP -DestinationPath $CTempPath
     Get-ChildItem -Path C:\Temp\Virtual* -Recurse -Force | Unblock-File
     $VDOTString = "$CTempPath\Virtual-Desktop-Optimization-Tool-main\Win10_VirtualDesktop_Optimize.ps1 -AcceptEula -Verbose"
     Invoke-Expression $VDOTString
-    Set-ExecutionPolicy -ExecutionPolicy Undefined -Scope LocalMachine -Force
-    
-    #Reset the PowerShell Execution Policy back to default globally
-    $PSExecutionPolicy = Get-ExecutionPolicy
-    If ($PSExecutionPolicy -ne "Undefined"){
-    Set-ExecutionPolicy -ExecutionPolicy Undefined -Force
-    }
-        
     Invoke-Command -ScriptBlock {Shutdown -r -f -t 00}
 }
 '@
@@ -166,10 +170,11 @@ Add-Content -Path $CTempPath\PostInstallConfigureAVDSessionHosts.ps1 -Value $Pos
 
 # Acquire FSLogix software for the group policy files only
 # since the FSLogix session host software is now included in OS
-$FSLogixZip = 'C:\Temp\FSLogixSW.zip'
-$FSLogixSW = 'C:\Temp\Software\FSLogix'
+$FSLogixZip = "$CTempPath\FSLogixGPT.zip"
+$FSLogixSW = "$CTempPath\Software\FSLogix"
 $SoftwareShare = "$CTempPath\Software"
-Invoke-WebRequest -Uri 'https://aka.ms/fslogix_download' -OutFile $FSLogixZip
+$FSLogixFileURI = "$ScriptURI/FSLogixGPT.zip"
+Invoke-WebRequest -Uri $FSLogixFileURI -OutFile $FSLogixZip
 Expand-Archive -Path $FSLogixZip -DestinationPath $FSLogixSW
 
 # Set up a file share for the session hosts
@@ -207,14 +212,14 @@ Copy-Item $FSLogixSW\fslogix.adml "$PolicyDefinitions\en-US" -Force
 }
 
 # Acquire Virtual Desktop Optimization Tool software
-$VDOTURI = 'https://github.com/The-Virtual-Desktop-Team/Virtual-Desktop-Optimization-Tool/archive/refs/heads/main.zip'
+$VDOTURI = "$ScriptURI/VDOT.zip"
 $VDOTZip = "$CTempPath\Software\VDOT.zip"
 Invoke-WebRequest -Uri $VDOTURI -OutFile $VDOTZip
 
 # Determine profile share name and set a variable
 $DeploymentPrefixSS = ($DeploymentPrefix +,'sharedsvcs*')
 $CurrentStorageAccountName = Get-AzStorageAccount -ResourceGroup $ResourceGroupName | Where-Object {($_.StorageAccountName -Like "$DeploymentPrefix*" -and $_.StorageAccountName -notlike "$DeploymentPrefixSS")}
-$StorageFQDN = "$($CurrentStorageAccountName.StorageAccountName).file.core.windows.net"
+$StorageFQDN = "$($CurrentStorageAccountName.StorageAccountName).$AzureStorageFQDN"
 $StorageShareName = Get-AzRmStorageShare -StorageAccount $CurrentStorageAccountName
 $StorageUNC = "\\$StorageFQDN\$($StorageShareName.Name)"
 
@@ -235,18 +240,23 @@ Set-GPRegistryValue -Name "AVD Session Host Policy" -Key "HKLM\SOFTWARE\FSLogix\
 Set-GPRegistryValue -Name "AVD Session Host Policy" -Key "HKLM\SOFTWARE\FSLogix\Profiles" -Type DWORD -ValueName "FlipFlopProfileDirectoryName" -Value 1
 Set-GPRegistryValue -Name "AVD Session Host Policy" -Key "HKLM\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services" -Type DWORD -ValueName "fEnableTimeZoneRedirection" -Value 1
 
-#Force a GPUpdate now, then reboot so they can take effect, and so the Startup script can run to install FSLogix
-Foreach ($V in $VMsToManage) {Invoke-Command -Computer $V -ScriptBlock {gpupdate /force}}
-Foreach ($V in $VMsToManage) {Invoke-Command -Computer $V -ScriptBlock {shutdown /r /f /t 05}}
+# Add the 'AVD Users' AAD group to the AVD DAG created earlier
 
-Get-Date | Out-File -Append $ScriptLogActionsTimes
-"Apply GPO settings to Session Host VMs, and reboot completed" | Out-File -append $ScriptLogActionsTimes
+$AADAVDUsersGroupId = (Get-AzADGroup -DisplayName 'AVD Users').Id
+$AVDDAG = (Get-AzWvdApplicationGroup).Name
+
+New-AzRoleAssignment -ObjectId $AADAVDUsersGroupId -RoleDefinitionName "Desktop Virtualization User" -ResourceName $AVDDAG -ResourceGroupName $ResourceGroupName -ResourceType 'Microsoft.DesktopVirtualization/applicationGroups'
+
+#Force a GPUpdate now, then reboot so the session host VMs can run the VDOT tool on next startup
+Foreach ($V in $VMsToManage) {Invoke-Command -Computer $V -ScriptBlock {gpupdate /force}}
+Foreach ($V in $VMsToManage) {Invoke-Command -Computer $V -ScriptBlock {shutdown /r /f /t 00}}
+
 ############ END GROUP POLICY SECTION
     #>
 }
 
 #Get an Azure Managed Identity context
-Connect-AzAccount -Identity
+Connect-AzAccount -Identity -Environment $AzureEnvironmentName
 
 #Create a DAuser context, using password from Key Vault
 $KeyVault = Get-AzKeyVault -VaultName "*-sharedsvcs-kv"
@@ -273,7 +283,7 @@ Get-AzContext | Out-File -append c:\windows\temp\outercontext.txt
 klist tickets | Out-File -append c:\windows\temp\outercontext.txt
 
 #Run the $scriptblock in the DAuser context
-Invoke-Command -ConfigurationName DASessionConf -ComputerName $env:COMPUTERNAME -ScriptBlock $Scriptblock -ArgumentList $ResourceGroupName,$StorageAccountName,$ScriptURI
+Invoke-Command -ConfigurationName DASessionConf -ComputerName $env:COMPUTERNAME -ScriptBlock $Scriptblock -ArgumentList $ResourceGroupName,$StorageAccountName,$ScriptURI,$AzureEnvironmentName,$AzureStorageFQDN
 
 #Clean up DAuser context
 Unregister-PSSessionConfiguration -Name DASessionConf -Force
