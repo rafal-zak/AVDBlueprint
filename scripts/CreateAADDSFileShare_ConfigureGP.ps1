@@ -13,14 +13,32 @@ Param(
     [string] $AzureEnvironmentName,
 
     [Parameter(Mandatory=$true)]
-    [string] $AzureStorageFQDN
+    [string] $AzureStorageFQDN,
+
+    [Parameter(Mandatory=$true)]
+    [string] $evdvm_name_prefix,
+
+    [Parameter(Mandatory=$true)]
+    [string] $vmNumberOfInstances
+    
 )
-#Install RSAT-AD Tools, GP Tools, Az PS, and download components
+#region Install RSAT-AD Tools, GP Tools, setup working folders, and install 'Az' PowerShell modules
 Install-WindowsFeature -name GPMC
 Install-WindowsFeature -name RSAT-AD-Tools
-Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force
-Install-Module -Name Az -AllowClobber -Scope AllUsers -Force
-$ZipFileURI = "$ScriptURI/AVD_PostInstall_GP_Settings.zip"
+
+$CTempPath = 'C:\Temp'
+If (-not(Test-Path "$CTempPath")) {
+    New-Item -ItemType Directory -Path $CTempPath
+}    
+If (-not(Test-Path "$CTempPath\Software")) {
+    New-Item -ItemType Directory -Path "$CTempPath\Software"
+}
+
+$AzOfflineURI = "$ScriptURI/AzOffline.zip"
+$AzOfflineZip = "$CTempPath\AzOffline.zip"
+Invoke-WebRequest -Uri $AzOfflineURI -OutFile $AzOfflineZip
+Expand-Archive -LiteralPath "$AzOfflineZip" -DestinationPath "$env:ProgramFiles\WindowsPowerShell\Modules" -ErrorAction SilentlyContinue
+#endregion Install RSAT-AD Tools, GP Tools, setup working folders, and install 'Az' PowerShell modules
 
 #Run most of the following as domainadmin user via invoke-command scriptblock
 $Scriptblock = {
@@ -38,7 +56,14 @@ $Scriptblock = {
     [string] $AzureEnvironmentName,
 
     [Parameter(Mandatory=$true,Position=4)]
-    [string] $AzureStorageFQDN
+    [string] $AzureStorageFQDN,
+
+    [Parameter(Mandatory=$true,Position=5)]
+    [string] $evdvm_name_prefix,
+
+    [Parameter(Mandatory=$true,Position=6)]
+    [string] $vmNumberOfInstances
+
     )
     
     Start-Transcript -OutputDirectory C:\Windows\Temp
@@ -134,17 +159,14 @@ $Scriptblock = {
     
 Connect-AzAccount -Identity -Environment $AzureEnvironmentName
 
-# Set up a log to measure GP settings time to complete
-$CTempPath = 'C:\Temp'
-New-Item -ItemType Directory -Path $CTempPath
-
 # Download AVD post-install group policy settings zip file, and expand it
+$CTempPath = 'C:\Temp'
+
 $AVDPostInstallGPSettingsZip = "$CTempPath\AVD_PostInstall_GP_Settings.zip"
 $ZipFileURI = "$ScriptURI/AVD_PostInstall_GP_Settings.zip"
-
 Invoke-WebRequest -Uri $ZipFileURI -OutFile "$AVDPostInstallGPSettingsZip"
 If (Test-Path $AVDPostInstallGPSettingsZip){
-Expand-Archive -LiteralPath $AVDPostInstallGPSettingsZip -DestinationPath $CTempPath -ErrorAction SilentlyContinue
+Expand-Archive -LiteralPath "$AVDPostInstallGPSettingsZip" -DestinationPath "$CTempPath" -ErrorAction SilentlyContinue
 }
 
 # Create a startup script for the session hosts, to run the Virtual Desktop Optimization Tool
@@ -168,13 +190,20 @@ If(-not(Test-Path "$env:SystemRoot\System32\Winevt\Logs\Virtual Desktop Optimiza
 '@
 Add-Content -Path $CTempPath\PostInstallConfigureAVDSessionHosts.ps1 -Value $PostInstallAVDConfig
 
-# Acquire FSLogix software for the group policy files only
-# since the FSLogix session host software is now included in OS
+# Acquire Virtual Desktop Optimization Tool software
+$VDOTURI = "$ScriptURI/VDOT.zip"
+$VDOTZip = "$CTempPath\Software\VDOT.zip"
+Invoke-WebRequest -Uri $VDOTURI -OutFile $VDOTZip
+
+# Acquire FSLogix software group policy files
 $FSLogixZip = "$CTempPath\FSLogixGPT.zip"
 $FSLogixSW = "$CTempPath\Software\FSLogix"
 $SoftwareShare = "$CTempPath\Software"
 $FSLogixFileURI = "$ScriptURI/FSLogixGPT.zip"
 Invoke-WebRequest -Uri $FSLogixFileURI -OutFile $FSLogixZip
+If (-not(Test-Path "$FSLogixSW")) {
+    New-Item -ItemType Directory -Path "$FSLogixSW"
+} 
 Expand-Archive -Path $FSLogixZip -DestinationPath $FSLogixSW
 
 # Set up a file share for the session hosts
@@ -211,11 +240,6 @@ Copy-Item $FSLogixSW\fslogix.admx $PolicyDefinitions -Force
 Copy-Item $FSLogixSW\fslogix.adml "$PolicyDefinitions\en-US" -Force
 }
 
-# Acquire Virtual Desktop Optimization Tool software
-$VDOTURI = "$ScriptURI/VDOT.zip"
-$VDOTZip = "$CTempPath\Software\VDOT.zip"
-Invoke-WebRequest -Uri $VDOTURI -OutFile $VDOTZip
-
 # Determine profile share name and set a variable
 $DeploymentPrefixSS = ($DeploymentPrefix +,'sharedsvcs*')
 $CurrentStorageAccountName = Get-AzStorageAccount -ResourceGroup $ResourceGroupName | Where-Object {($_.StorageAccountName -Like "$DeploymentPrefix*" -and $_.StorageAccountName -notlike "$DeploymentPrefixSS")}
@@ -247,9 +271,22 @@ $AVDDAG = (Get-AzWvdApplicationGroup).Name
 
 New-AzRoleAssignment -ObjectId $AADAVDUsersGroupId -RoleDefinitionName "Desktop Virtualization User" -ResourceName $AVDDAG -ResourceGroupName $ResourceGroupName -ResourceType 'Microsoft.DesktopVirtualization/applicationGroups'
 
-#Force a GPUpdate now, then reboot so the session host VMs can run the VDOT tool on next startup
-Foreach ($V in $VMsToManage) {Invoke-Command -Computer $V -ScriptBlock {gpupdate /force}}
-Foreach ($V in $VMsToManage) {Invoke-Command -Computer $V -ScriptBlock {shutdown /r /f /t 00}}
+# Force a GPUpdate and a restart to make those settings apply, on each session host
+
+for ($i = 1; $i -le $vmNumberOfInstances ; $i++) {
+    $NumPrefix = $i - 1   
+    $VMComputerName = $evdvm_name_prefix + $NumPrefix
+    $s = New-PSSession -ComputerName $VMComputerName
+    Invoke-Command -Session $s -ScriptBlock {
+            gpupdate /force
+            shutdown /r /f /t 03
+        }
+    Remove-PSSession -Session $s
+}
+
+# Cleanup resources
+# Remove-SmbShare -Name "Software"
+# Remove-Item -LiteralPath 'C:\Temp' -Recurse -Force -ErrorAction SilentlyContinue
 
 ############ END GROUP POLICY SECTION
     #>
@@ -283,7 +320,7 @@ Get-AzContext | Out-File -append c:\windows\temp\outercontext.txt
 klist tickets | Out-File -append c:\windows\temp\outercontext.txt
 
 #Run the $scriptblock in the DAuser context
-Invoke-Command -ConfigurationName DASessionConf -ComputerName $env:COMPUTERNAME -ScriptBlock $Scriptblock -ArgumentList $ResourceGroupName,$StorageAccountName,$ScriptURI,$AzureEnvironmentName,$AzureStorageFQDN
+Invoke-Command -ConfigurationName DASessionConf -ComputerName $env:COMPUTERNAME -ScriptBlock $Scriptblock -ArgumentList $ResourceGroupName,$StorageAccountName,$ScriptURI,$AzureEnvironmentName,$AzureStorageFQDN,$evdvm_name_prefix,$vmNumberOfInstances
 
 #Clean up DAuser context
 Unregister-PSSessionConfiguration -Name DASessionConf -Force
