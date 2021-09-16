@@ -109,16 +109,16 @@ $RemovalScope | ForEach-Object {
         }
     }
    
-        Write-Verbose "Now purging key vault (will install Az.Keyvault PowerShell module if not already installed"
+        Write-Verbose "Now purging key vault (will install Az.Keyvault PowerShell module if not already installed)"
+    if ($PurgeKeyVault) {
         if (-not(Get-Module -Name Az.Keyvault)) {
-        Install-Module 'Az.Keyvault' -Force
+            Install-Module 'Az.Keyvault' -Force
         }
-        if ($PurgeKeyVault) {
-            $KeyVaultToPurge = Get-AzKeyVault -ResourceGroupName $RemovalScope.ResourceGroupName
-            Write-Verbose "Found '$($KeyVaultToPurge.VaultName)' Key Vault"
-            Remove-AzKeyVault -VaultName $KeyVaultToPurge.VaultName -Location $RemovalScope.Location -Force
-            Remove-AzKeyVault -InRemovedState -VaultName $KeyVaultToPurge.VaultName -Location $RemovalScope.Location -Force
-        }
+        $KeyVaultToPurge = Get-AzKeyVault -ResourceGroupName $RemovalScope.ResourceGroupName
+        Write-Verbose "Found '$($KeyVaultToPurge.VaultName)' Key Vault"
+        Remove-AzKeyVault -VaultName $KeyVaultToPurge.VaultName -Location $RemovalScope.Location -Force
+        Remove-AzKeyVault -InRemovedState -VaultName $KeyVaultToPurge.VaultName -Location $RemovalScope.Location -Force
+    }
 
     if($PSCmdlet.ShouldProcess($_.ResourceGroupName, "Remove ResourceGroup")){
         $_ | Remove-AzResourceGroup -Force -AsJob
