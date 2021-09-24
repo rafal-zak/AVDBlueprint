@@ -172,9 +172,8 @@ If(-not(Test-Path "$env:SystemRoot\System32\Winevt\Logs\Virtual Desktop Optimiza
     Copy-Item "$SoftwareShare\VDOT.zip" $CTempPath
     Expand-Archive -Path $VDOTZIP -DestinationPath $CTempPath
     Get-ChildItem -Path C:\Temp\Virtual* -Recurse -Force | Unblock-File
-    $VDOTString = "$CTempPath\Virtual-Desktop-Optimization-Tool-main\Win10_VirtualDesktop_Optimize.ps1 -AcceptEula -Verbose"
+    $VDOTString = "$CTempPath\Virtual-Desktop-Optimization-Tool-main\Win10_VirtualDesktop_Optimize.ps1 -AcceptEula -Verbose -Restart"
     Invoke-Expression $VDOTString
-    Invoke-Command -ScriptBlock {Shutdown -r -f -t 00}
 }
 '@
 Add-Content -Path $CTempPath\PostInstallConfigureAVDSessionHosts.ps1 -Value $PostInstallAVDConfig
@@ -182,6 +181,9 @@ Add-Content -Path $CTempPath\PostInstallConfigureAVDSessionHosts.ps1 -Value $Pos
 # Acquire Virtual Desktop Optimization Tool software
 $VDOTURI = "$ScriptURI/VDOT.zip"
 $VDOTZip = "$CTempPath\Software\VDOT.zip"
+if (-not(Test-Path "$CTempPath\Software")) {
+    New-Item -ItemType Directory -Path "$CTempPath\Software" -Force -ErrorAction SilentlyContinue   
+}
 Invoke-WebRequest -Uri $VDOTURI -OutFile $VDOTZip
 
 # Acquire FSLogix software group policy files
@@ -268,7 +270,7 @@ for ($i = 1; $i -le $vmNumberOfInstances ; $i++) {
     $s = New-PSSession -ComputerName $VMComputerName
     Invoke-Command -Session $s -ScriptBlock {
             gpupdate /force
-            shutdown /r /f /t 03
+            shutdown /r /f /t 30
         }
     Remove-PSSession -Session $s
 }
