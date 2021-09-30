@@ -590,9 +590,6 @@
     "AzureStorageFQDN": {
       "value": "[parameters('AzureStorageFQDN')]"
     },
-    "MGMTVMOSSku": {
-      "value": "[parameters('managementVMOSSku')]"
-    },
     "avdHostPool_vmNumberOfInstances": {
       "value": "[parameters('avdHostPool_vmNumberOfInstances')]"
     },
