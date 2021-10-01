@@ -1,0 +1,31 @@
+﻿{
+    "AzureSubscriptionID": "",
+    "AzureTenantID": "",
+    "AADDSDomainName": "",
+    
+    "PromptForManagementVMOSSku": true,
+    "avdHostPool_vmGalleryImageSKU": "21h1-evd-o365pp",
+    "avdHostPool_vmSize": "Standard_B4ms",
+    "avdHostPool_vmNumberOfInstances": 2,
+    "avdHostPool_maxSessionLimit": 16,
+    "avdUsers_userCount": 30,
+    "BlueprintResourcePrefix": "AVDBP116",
+    "BlueprintGlobalResourceGroupName": "AVD_Blueprint_Global_RG",
+    "UserAssignedIdentityName": "UAI1",
+    "BlueprintName": "AVDBlueprint",
+    "BlueprintPath": "C:\\AVDBlueprint\\Blueprint",
+    "BlueprintParameterFilePath": "C:\\AVDBlueprint\\Examples & Samples\\Deploy with Single Script",
+    
+    "ScriptURI": "https://raw.githubusercontent.com/Azure/AVDBlueprint/main/scripts",
+    
+    "avdHostPool_loadBalancerType": "BreadthFirst",
+    "avdHostPool_CreateAvailabilitySet": true,
+    "avdHostPool_HostPoolType": "Pooled",
+    "avdHostPool_vmNamePrefix": "[concat(parameters('resourcePrefix'), 'VM')]",
+    "avdHostPool_hostpoolname": "[concat(parameters('resourcePrefix'), '-avd-hp')]",
+    "avdHostPool_workspaceName": "[concat(parameters('resourcePrefix'), '-avd-ws')]",
+    
+    "vnetEnableDdosProtection": false,
+    "managementVMOSSku": "2022-datacenter-g2",
+    "logsRetentionInDays": 365
+}

@@ -25,21 +25,14 @@
             "description": "AAD object ID of the user that requires access to Key Vault. To retrieve this value go to Microsoft Azure Portal > Azure Active Directory > Users > (user) and copy the User’s Object ID"
           }
         },
-        "script_executionUserObjectID": {
+        "scriptExecutionUserObjectID": {
           "type": "string",
           "metadata": {
             "displayName": "PoSH Managed Identity Object ID",
             "description": "Managed Identity object ID for executing PoSH."          }
         },
-        "logs-retention-in-days": {
-          "type": "int",
-          "defaultValue": 365,
-          "minValue": 0,
-          "maxValue": 365,
-          "metadata": {
-            "displayName": "Log retention in days",
-            "description": "Specifies the number of days that logs will be kept for; a value of 0 will retain data indefinitely"
-          }
+        "logsRetentionInDays": {
+          "type": "int"
         },
         "secret-unique-value1": {
           "type": "string",
@@ -125,7 +118,7 @@
           },
           {
             "tenantId": "[subscription().tenantId]",
-            "objectId": "[parameters('script_executionUserObjectID')]",
+            "objectId": "[parameters('scriptExecutionUserObjectID')]",
             "permissions": {
               "certificates": [
                 "All"
@@ -198,7 +191,7 @@
                     "enabled": true,
                     "retentionPolicy": {
                       "enabled": true,
-                      "days": "[parameters('logs-retention-in-days')]"
+                      "days": "[parameters('logsRetentionInDays')]"
                     }
                   }
                 ],
@@ -208,7 +201,7 @@
                     "enabled": true,
                     "retentionPolicy": {
                       "enabled": true,
-                      "days": "[parameters('logs-retention-in-days')]"
+                      "days": "[parameters('logsRetentionInDays')]"
                     }
                   }
                 ]
@@ -239,11 +232,11 @@
       "keyvault_ownerUserObjectID": {
         "value": "[parameters('keyvault_ownerUserObjectID')]"
       },
-      "script_executionUserObjectID": {
-        "value": "[parameters('script_executionUserObjectID')]"
+      "scriptExecutionUserObjectID": {
+        "value": "[parameters('scriptExecutionUserObjectID')]"
       },
-      "logs-retention-in-days": {
-        "value": "[parameters('keyvault_logs-retention-in-days')]"
+      "logsRetentionInDays": {
+        "value": "[parameters('logsRetentionInDays')]"
       }
     }
   }

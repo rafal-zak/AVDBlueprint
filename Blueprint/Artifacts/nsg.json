@@ -18,15 +18,8 @@
             "displayName": "Resource Group and Resource identifier. String to be used as prefix to all Resource Group and Resource names."
           }
         },
-        "logs-retention-in-days": {
-          "type": "int",
-          "defaultValue": 365,
-          "minValue": 0,
-          "maxValue": 365,
-          "metadata": {
-            "displayName": "Log retention in days",
-            "description": "Specifies the number of days that logs will be kept for; a value of 0 will retain data indefinitely"
-          }
+        "logsRetentionInDays": {
+          "type": "int"
         }
       },
       "variables": {
@@ -763,7 +756,7 @@
                 "enabled": true,
                 "retentionPolicy": {
                   "enabled": true,
-                  "days": "[parameters('logs-retention-in-days')]"
+                  "days": "[parameters('logsRetentionInDays')]"
                 }
               },
               {
@@ -771,7 +764,7 @@
                 "enabled": true,
                 "retentionPolicy": {
                   "enabled": true,
-                  "days": "[parameters('logs-retention-in-days')]"
+                  "days": "[parameters('logsRetentionInDays')]"
                 }
               }
             ]
@@ -785,8 +778,8 @@
       "resourcePrefix": {
         "value": "[parameters('resourcePrefix')]"
       },
-      "logs-retention-in-days": {
-        "value": "[parameters('nsg_logs-retention-in-days')]"
+      "logsRetentionInDays": {
+        "value": "[parameters('logsRetentionInDays')]"
       }
     }
   }

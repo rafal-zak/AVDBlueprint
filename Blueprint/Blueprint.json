@@ -49,6 +49,17 @@
           ],
           "defaultValue": "BreadthFirst"
       },
+      "avdHostPool_HostPoolType": {
+        "type": "string",
+        "allowedValues": [
+            "Personal",
+            "Pooled"
+        ],
+        "metadata": {
+            "description": "Set this parameter to Personal if you would like to enable Persistent Desktop experience. Defaults to false."
+        },
+        "defaultValue": "Pooled"
+      },
       "avdHostPool_maxSessionLimit": {
         "type": "int",
         "metadata": {
@@ -78,7 +89,7 @@
           "description": "Resource ID for the Managed Identity that will execute embedded deployment scripts."
         }
       },
-      "script_executionUserObjectID": {
+      "scriptExecutionUserObjectID": {
         "type": "string",
         "metadata": {
           "displayName": "Deployment Script Managed Identity Object ID",
@@ -89,7 +100,7 @@
         "type": "string",
         "metadata": {
           "displayName": "Keyvault Owner User Object ID",
-          "description": "Object ID of the user that will get access to the Key Vault. To retrieve this value go to Microsoft Azure Portal > Azure Active Directory > Users > (user) and copy the User’s Object ID"
+          "description": "Object ID of the Global Administrator account used to initiate this blueprint assignment"
         }
       },
       "resourcePrefix": {
@@ -99,7 +110,7 @@
         },
         "defaultValue": "AVD"
       },
-      "_ScriptURI": {
+      "scriptURI": {
         "type": "string",
         "metadata": {
           "displayName": "Script URI",
@@ -111,10 +122,10 @@
         "type": "string",
         "metadata": {
           "displayName": "Azure Environment Name",
-          "description": "URI where Powershell scripts executed by the blueprint are located."
+          "description": "URI where Powershell scripts executed by the blueprint are located (cloud name)."
         },
         "defaultValue": "AzureCloud",
-        "allowedValues": ["AzureCloud", "AzureUSGovernment"]
+        "allowedValues": []
       },
       "AzureStorageFQDN": {
         "type": "string",
@@ -122,10 +133,25 @@
           "displayName": "Azure Files public endpoint",
           "description": "URI where Powershell scripts executed by the blueprint are located."
         },
-        "defaultValue": "file.core.windows.net",
-        "allowedValues": ["file.core.windows.net", "file.core.usgovcloudapi.net"]
+        "defaultValue": "file.core.windows.net"
       },
-      "CreateAvailabilitySet": {
+      "managementVMOSSku": {
+        "type": "string",
+        "metadata": {
+          "displayName": "Management VM OS version",
+          "description": "The Windows version of the VM used to manage AAD DS"
+        },
+        "defaultValue": "2022-datacenter-g2",
+        "allowedValues": [
+          "2022-datacenter",
+          "2022-datacenter-g2",
+          "2019-Datacenter",
+          "2019-datacenter-gensecond",
+          "2016-Datacenter",
+          "2016-datacenter-gensecond"
+          ]
+      },
+      "avdHostPool_CreateAvailabilitySet": {
         "type": "bool",
         "metadata": {
           "displayName": "Create VM Availability Set",
@@ -213,13 +239,15 @@
         "defaultValue": 365,
         "allowedValues": []
       },
-      "nsg_logs-retention-in-days": {
+      "logsRetentionInDays": {
         "type": "int",
+        "defaultValue": 365,
+        "minValue": 0,
+        "maxValue": 365,
         "metadata": {
           "displayName": "Log retention in days",
-          "description": "Number of days NSG logs will be retained."
-        },
-        "defaultValue": 365
+          "description": "Specifies the number of days (0-365) that logs will be kept. A value of '0' will retain logs indefinitely"
+        }
       },
       "vnet_vnet-address-prefix": {
         "type": "string",
@@ -229,7 +257,7 @@
         "defaultValue": "10.0.0.0/16",
         "allowedValues": []
       },
-      "vnet_enable-ddos-protection": {
+      "vnetEnableDdosProtection": {
         "type": "Bool",
         "metadata": {
           "displayName": "Enable Virtual Network DDoS protection",
@@ -254,22 +282,6 @@
         },
         "defaultValue": "10.0.6.0/24",
         "allowedValues": []
-      },
-      "vnet_logs-retention-in-days": {
-        "type": "int",
-        "metadata": {
-          "displayName": "Log retention in days",
-          "description": "Number of days vnet logs will be retained."
-        },
-        "defaultValue": 365
-      },
-      "keyvault_logs-retention-in-days": {
-        "type": "int",
-        "metadata": {
-          "displayName": "Log retention(days)",
-          "description": "Number of days keyvault logs will be retained."
-        },
-        "defaultValue": 365
       },
       "daUser_AdminUser": {
         "type": "string",
@@ -298,7 +310,7 @@
         "metadata": {
           "displayName": "AVD Hostpool Description"
         },
-        "defaultValue": ""
+        "defaultValue": "A collection of session hosts, running as virtual machines in Azure, and registered to the Azure Virtual Desktop service"
       },
       "avdHostPool_vmNamePrefix": {
         "type": "string",
@@ -310,6 +322,10 @@
       },
       "avdHostPool_vmGalleryImageOffer": {
         "type": "string",
+        "allowedValues": [
+           "windows-10",
+           "office-365"
+          ],
         "metadata": {
           "displayName": "Gallery Image Offer"
         },
@@ -351,9 +367,15 @@
       "avdHostPool_vmImageType": {
         "type": "string",
         "metadata": {
-          "displayName": "VM Image Type"
+          "description": "Select the image source for the session host vms. VMs from a Gallery image will be created with Managed Disks."
         },
-        "defaultValue": "Gallery"
+        "defaultValue": "Gallery",
+        "allowedValues": [
+          "CustomVHD",
+          "CustomImage",
+          "Gallery",
+          "Disk"
+        ]
       },
       "avdHostPool_vmDiskType": {
         "type": "string",
@@ -411,7 +433,7 @@
           "displayName": "personalDesktopAssignmentType (AVDHostpool)",
           "description": "Set the type of assignment for a Personal hostpool type"
         },
-        "defaultValue": "",
+        "defaultValue": "Automatic",
         "allowedValues": ["Automatic", "Direct", ""]
       },
       "avdHostPool_customRdpProperty": {
