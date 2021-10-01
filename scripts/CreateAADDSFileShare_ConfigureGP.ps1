@@ -150,8 +150,9 @@ Connect-AzAccount -Identity -Environment $AzureEnvironmentName
 
 # Download AVD post-install group policy settings zip file, and expand it
 $CTempPath = 'C:\Temp'
-New-Item -ItemType Directory -Path $CTempPath -ErrorAction SilentlyContinue
-New-Item -ItemType Directory -Path "$CTempPath\Software" -ErrorAction SilentlyContinue
+$SoftwareShare = "$CTempPath\Software"
+# Creating two working folders with one command
+New-Item -ItemType Directory -Path "$CTempPath\Software" -Force -ErrorAction SilentlyContinue
 $AVDPostInstallGPSettingsZip = "$CTempPath\AVD_PostInstall_GP_Settings.zip"
 $ZipFileURI = "$ScriptURI/AVD_PostInstall_GP_Settings.zip"
 Invoke-WebRequest -Uri $ZipFileURI -OutFile "$AVDPostInstallGPSettingsZip"
@@ -191,7 +192,6 @@ Invoke-WebRequest -Uri $VDOTURI -OutFile $VDOTZip
 # Acquire FSLogix software group policy files
 $FSLogixZip = "$CTempPath\FSLogixGPT.zip"
 $FSLogixSW = "$CTempPath\Software\FSLogix"
-$SoftwareShare = "$CTempPath\Software"
 $FSLogixFileURI = "$ScriptURI/FSLogixGPT.zip"
 Invoke-WebRequest -Uri $FSLogixFileURI -OutFile $FSLogixZip
 If (-not(Test-Path "$FSLogixSW")) {

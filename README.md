@@ -171,6 +171,11 @@ Check the current provider registration status in your subscription:
 > [!NOTE]
 > Any roles assigned to the user assigned managed identity can safely be removed after the blueprint assignment has completed.  The only downside is that if subsequent blueprint assignments are needed, those roles would need to be granted to the user assigned managed identity again.
 
+* **Managed identity assigned the Owner role at the subscription level**  
+The reason is that the managed identity needs full access during the deployment, for example to initiate the creation of an instance of Azure AD DS.  
+
+    **MORE INFO:** [Add or change Azure subscription administrators](https://docs.microsoft.com/en-us/azure/cost-management-billing/manage/add-change-subscription-administrator)
+
 * **The Blueprint main file (Blueprint.json), and related artifact objects**  
 These objects are publicly available on Github.com. Once the Blueprint objects have been acquired, they need to be customized to each respective environment.
 

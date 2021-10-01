@@ -114,6 +114,9 @@ $RemovalScope | ForEach-Object {
     
     Write-Verbose "Exporting logs to $LogPath"
     $laws = Get-AzOperationalInsightsWorkspace -Name "$prefix-sharedsvcs-log" -ResourceGroupName $thisrg.ResourceGroupName
+        if(-not(Get-Module Az.OperationalInsights)) {
+        Install-Module Az.OperationalInsights -Force
+        }
     if($PSBoundParameters.ContainsKey('DisableLogExport')){
         Write-Verbose "-DisableLogExport switch called"
     } else {
@@ -128,7 +131,7 @@ $RemovalScope | ForEach-Object {
         }
     }
    
-    Write-Verbose "Now purging key vault"
+        Write-Verbose "Now purging key vault"
     if ($PurgeKeyVault) {
         if(-not(Get-AzKeyVault -ResourceGroupName $RemovalScope.ResourceGroupName)) {
         Write-Host "No key vault found."
