@@ -112,7 +112,8 @@ $BPScriptParams
 
 ######################################################################################################################################>
 
-Write-Host "Checking PowerShell installed modules..." -ForegroundColor Cyan
+
+ Write-Host "Checking PowerShell installed modules..." -ForegroundColor Cyan
  #region Checking for the first two required parameters, and if not set, exit script
 if (-not($AADDSDomainName)) {
     Write-Host "`n    Azure Active Directory Domain Services name is null
@@ -188,7 +189,7 @@ if (-not($AzureSubscriptionID)) {
 #endregion
 
 #region Pop-up Azure Cloud instance for user selection
-Write-Host "`n    Enumerating list Azure Clouds..." -ForegroundColor Cyan
+Write-Host "`n    Enumerating list of Azure Clouds..." -ForegroundColor Cyan
 $AzureClouds = Get-AzEnvironment
 $AzureCloudsList = $AzureClouds.Name
 
@@ -260,7 +261,7 @@ if ($result -eq [System.Windows.Forms.DialogResult]::OK)
 Write-Host "The next action will prompt you to login to your Azure portal using a Global Admin account`n" -ForegroundColor Cyan
 Start-Sleep -Seconds 3
 
-Connect-AzAccount -Tenant $AzureTenantID -Subscription $AzureSubscriptionID -Environment $AzureEnvironmentName
+Connect-AzAccount -Tenant $AzureTenantID -Subscription $AzureSubscriptionID -Environment $AzureEnvironmentName -Force
 
 Write-Host "Enumerating Azure context..." -ForegroundColor Cyan
 $AzureEnvironment = Get-AzContext
@@ -517,47 +518,51 @@ if (-not(Get-AzureADMSRoleAssignment -Filter "principalID eq '$ScriptExecutionUs
 
 #region Register the Azure Blueprint provider to the subscription, if not already registered
 Write-Host "Now checking the 'Microsoft.Blueprint' provider, and registering if needed" -ForegroundColor Cyan
-if (-not(Get-AzResourceProvider -ListAvailable | Where-Object {($_.ProviderNamespace -EQ "Microsoft.Blueprint" -and $_.RegistrationState -EQ "Registered")})) {
+$BlueprintProviderList = Get-AzResourceProvider -ListAvailable | Where-Object {($_.ProviderNamespace -EQ "Microsoft.Blueprint" -and $_.RegistrationState -EQ "Registered")}
+if (-not($BlueprintProviderList)) {
     Write-Host "The 'Microsoft.Blueprint' provider is not currently registered. Now registering..." -ForegroundColor Cyan
     Register-AzResourceProvider -ProviderNamespace 'Microsoft.Blueprint'
     Get-AzResourceProvider -ListAvailable | Where-Object {($_.ProviderNamespace -EQ "Microsoft.Blueprint" -and $_.RegistrationState -EQ "Registered")}
 } else {
     Write-Host "The 'Microsoft.Blueprint' provider is already registered" -ForegroundColor Cyan
-    Get-AzResourceProvider -ListAvailable | Where-Object {($_.ProviderNamespace -EQ "Microsoft.Blueprint" -and $_.RegistrationState -EQ "Registered")}
+    $BlueprintProviderList
 }
 #endregion
 
 #region Register the 'Microsoft.AAD' provider to the subscription, if not already registered
 Write-Host "Now checking the 'Microsoft.AAD' provider, and registering if needed" -ForegroundColor Cyan
-if (-not(Get-AzResourceProvider -ListAvailable | Where-Object {($_.ProviderNamespace -EQ "Microsoft.AAD" -and $_.RegistrationState -EQ "Registered")})) {
+$MicrosoftAADProviderCheck = Get-AzResourceProvider -ListAvailable | Where-Object {($_.ProviderNamespace -EQ "Microsoft.AAD" -and $_.RegistrationState -EQ "Registered")}
+if (-not($MicrosoftAADProviderCheck)) {
     Write-Host "The 'Microsoft.AAD' provider is not currently registered. Now registering..." -ForegroundColor Cyan
     Register-AzResourceProvider -ProviderNamespace 'Microsoft.AAD'
     Get-AzResourceProvider -ListAvailable | Where-Object {($_.ProviderNamespace -EQ "Microsoft.AAD" -and $_.RegistrationState -EQ "Registered")}
 } else {
     Write-Host "The 'Microsoft.AAD' provider is already registered" -ForegroundColor Cyan
-    Get-AzResourceProvider -ListAvailable | Where-Object {($_.ProviderNamespace -EQ "Microsoft.AAD" -and $_.RegistrationState -EQ "Registered")}
+    $MicrosoftAADProviderCheck
 }
 #endregion
 
 #region Register the 'Azure AD Domain Services' enterprise application to the subscription if not already registered
-Write-Host "`nNow checking registration for 'Azure AD Domain Services' enterprise application" -ForegroundColor Cyan
-if (-not (Get-AzureADServicePrincipal -SearchString "Azure AD Domain Services" | Where-Object AppId -EQ '6ba9a5d4-8456-4118-b521-9c5ca10cdf84')) {
-    Write-Host "The 'Azure AD Domain Services' enterprise application is not currently registered. Now registering`n" -ForegroundColor Cyan
+Write-Host "`Now checking registration for 'Azure AD Domain Services' enterprise application" -ForegroundColor Cyan
+$AzureADDSappregistration = Get-AzureADServicePrincipal -SearchString "Azure AD Domain Services" | Where-Object AppId -EQ '6ba9a5d4-8456-4118-b521-9c5ca10cdf84'
+if (-not ($AzureADDSappregistration)) {
+    Write-Host "The 'Azure AD Domain Services' enterprise application is not currently registered. Now registering" -ForegroundColor Cyan
     New-AzureADServicePrincipal -AppId "6ba9a5d4-8456-4118-b521-9c5ca10cdf84" -ErrorAction SilentlyContinue
 } else {
     Write-Host "The 'Azure AD Domain Services' enterprise application is already registered" -ForegroundColor Cyan
-    Get-AzureADServicePrincipal -SearchString "Azure AD Domain Services" | Where-Object AppId -EQ '6ba9a5d4-8456-4118-b521-9c5ca10cdf84'
+    $AzureADDSappregistration
 }
 #endregion
 
 #region Register the 'Domain Controller Services' service principal to the subscription if not already registered
-Write-Host "`nNow checking registration for Domain Controller Services service principal, and registering if needed" -ForegroundColor Cyan
-if (-not (Get-AzureADServicePrincipal -SearchString "Domain Controller Services" | Where-Object AppID -like "2565bd9d-da50-47d4-8b85-4c97f669dc36")) {
+Write-Host "Now checking registration for Domain Controller Services service principal, and registering if needed" -ForegroundColor Cyan
+$DCServicePrincipalCheck = Get-AzureADServicePrincipal -SearchString "Domain Controller Services" | Where-Object AppID -like "2565bd9d-da50-47d4-8b85-4c97f669dc36"
+if (-not ($DCServicePrincipalCheck)) {
     Write-Host "The 'Domain Controller Services' service principal is not currently registered. Now registering" -ForegroundColor Cyan
     New-AzureADServicePrincipal -AppId "2565bd9d-da50-47d4-8b85-4c97f669dc36"
 } else {
     Write-Host "The 'Domain Controller Services' service principal is already registered" -ForegroundColor Cyan
-    Get-AzureADServicePrincipal | Where-Object AppID -like "2565bd9d-da50-47d4-8b85-4c97f669dc36"
+    $DCServicePrincipalCheck
 }
 #endregion
 
