@@ -1,4 +1,4 @@
-﻿[CmdletBinding()]
+[CmdletBinding()]
 param(
     [Parameter()]
     [string]$AVDBPParamFile = ".\AVDBPParameters.json"
@@ -258,10 +258,11 @@ if ($result -eq [System.Windows.Forms.DialogResult]::OK)
 
 #region Checking for and setting up environment
 Write-Host "The next action will prompt you to login to your Azure portal using a Global Admin account`n" -ForegroundColor Cyan
-Read-Host -Prompt "Press any key to continue or 'CTRL+C' to end script"
+Start-Sleep -Seconds 3
 
 Connect-AzAccount -Tenant $AzureTenantID -Subscription $AzureSubscriptionID -Environment $AzureEnvironmentName
 
+Write-Host "Enumerating Azure context..." -ForegroundColor Cyan
 $AzureEnvironment = Get-AzContext
 $AzureStorageEnvironment = ($AzureEnvironment).Environment.StorageEndpointSuffix
 $AzureStorageFileEnv = 'file.' + $AzureStorageEnvironment
@@ -408,6 +409,8 @@ if ($result -eq [System.Windows.Forms.DialogResult]::OK)
     Write-Host "Your chosen management VM OS Sku is '$managementVMOSSku'"
  }
 
+} else {
+$managementVMOSSku = '2022-datacenter'
 }
 #endregion
 
@@ -431,7 +434,8 @@ if(!$UserAssignedObjectId)
 
 Write-Host "The next action will prompt you to login to your Azure Active Directory`n" -ForegroundColor Cyan
 Write-Host "If the prompt does not appear in the foreground, try minimizing your current app`n" -ForegroundColor Cyan
-Read-Host -Prompt "Press any key to continue or 'CTRL + C' to end script"
+#Read-Host -Prompt "Press any key to continue or 'CTRL + C' to end script"
+Start-Sleep -Seconds 3
 Connect-AzureAD -AzureEnvironmentName $AzureEnvironmentName -TenantId $AzureTenantID
 
 #endregion
@@ -440,22 +444,26 @@ Connect-AzureAD -AzureEnvironmentName $AzureEnvironmentName -TenantId $AzureTena
 # which should not be the same resource group that the AVD Blueprint is later assigned to
 
     Write-Host "`nCreating AVD resource group for persistent objects such as user-assigned identity" -ForegroundColor Cyan
-    If (-not(Get-AzResourceGroup -Name $BlueprintGlobalResourceGroupName -ErrorAction SilentlyContinue)){
+    $ResourceGroupCheck = Get-AzResourceGroup -Name $BlueprintGlobalResourceGroupName -ErrorAction SilentlyContinue
+    If (-not($ResourceGroupCheck)){
         Write-Host "`Resource Group $BlueprintGlobalResourceGroupName does not currently exist. Now creating Resource Group" -ForegroundColor Cyan
         New-AzResourceGroup -ResourceGroupName $BlueprintGlobalResourceGroupName -Location $ChosenAzureLocation
         } else {
         Write-Host "`Resource Group '$BlueprintGlobalResourceGroupName' already exists." -ForegroundColor Cyan
+        $ResourceGroupCheck
     }
 #endregion
 
 #region Check to see if there is a user assigned managed identity with name 'UAI1', and if not, create one
-    Write-Host "`nCreating user-assigned managed identity account, that will be the context of the AVD assignment" -ForegroundColor Cyan
-    If (-not(Get-AzUserAssignedIdentity -Name $UserAssignedIdentityName -ResourceGroupName $BlueprintGlobalResourceGroupName -ErrorAction SilentlyContinue)){
+$ManagedIdentityCheck = Get-AzUserAssignedIdentity -Name $UserAssignedIdentityName -ResourceGroupName $BlueprintGlobalResourceGroupName -ErrorAction SilentlyContinue
+Write-Host "`nCreating user-assigned managed identity account, that will be the context of the AVD assignment" -ForegroundColor Cyan
+    If (-not($ManagedIdentityCheck)){
         Write-Host "        Managed identity '$UserAssignedIdentityName' does not currently exist.
         Now creating managed identity '$UserAssignedIdentityName' in resource group '$BlueprintGlobalResourceGroupName'" -ForegroundColor Cyan
         $UserAssignedIdentity = New-AzUserAssignedIdentity -ResourceGroupName $BlueprintGlobalResourceGroupName -Name $UserAssignedIdentityName -Location $ChosenAzureLocation
         } else {
         Write-Host "`nUser Assigned Identity '$UserAssignedIdentityName' already exists`n" -ForegroundColor Cyan
+        $ManagedIdentityCheck
         $UserAssignedIdentity = Get-AzUserAssignedIdentity -ResourceGroupName $BlueprintGlobalResourceGroupName -Name $UserAssignedIdentityName
     }
     $UserAssignedIdentityId = $UserAssignedIdentity.Id
@@ -464,9 +472,8 @@ Connect-AzureAD -AzureEnvironmentName $AzureEnvironmentName -TenantId $AzureTena
 
 #region Grant the 'Owner' subscription level role to the managed identity
 Write-Host "Now checking if user assigned identity '$UserAssignedIdentityName' has 'Owner' subscription level role assignment" -ForegroundColor Cyan
-
-if (-not(Get-AzUserAssignedIdentity -Name $UserAssignedIdentityName -ResourceGroupName $BlueprintGlobalResourceGroupName -ErrorAction SilentlyContinue)){
-
+$UAMIOwnerSubRoleCheck = Get-AzUserAssignedIdentity -Name $UserAssignedIdentityName -ResourceGroupName $BlueprintGlobalResourceGroupName -ErrorAction SilentlyContinue
+if (-not($UAMIOwnerSubRoleCheck)){
     Do {
     Write-Host "Waiting 3 seconds for user assigned managed identity '$UserAssignedIdentityName' to become available for next operation..." -ForegroundColor Cyan
     Start-Sleep -Seconds 3
@@ -476,7 +483,7 @@ if (-not(Get-AzUserAssignedIdentity -Name $UserAssignedIdentityName -ResourceGro
 
 } else {
     Write-Host "User assigned identity '$UserAssignedIdentityName' already has 'Owner' role assigned at the subscription level" -ForegroundColor Cyan
-    Get-AzRoleAssignment -ResourceGroupName $BlueprintGlobalResourceGroupName -ObjectID $UserAssignedIdentity.PrincipalId -RoleDefinitionName 'Owner'
+    $UAMIOwnerSubRoleCheck
 }
 
 #endregion
@@ -610,5 +617,20 @@ $BlueprintParams = @{
 Write-Host "Now assigning Blueprint '$BlueprintAssignmentName'`n" -ForegroundColor Cyan
 $BlueprintAssignment = New-AzBlueprintAssignment @BlueprintParams
 
-Write-Output $BlueprintAssignment
+$BlueprintAssignmentStatus = Get-AzBlueprintAssignment -ErrorAction SilentlyContinue
+if ($BlueprintAssignmentStatus){
+$BlueprintAssignmentStatus
+Write-Host "`nThe Blueprint named '$($BlueprintAssignment.Name)' successfully assigned. To check progress...
+go to your Azure tenant, go to the Blueprints main blade, go to the Blueprint Assignments blade.
+Or copy and paste the following into a web browser to check progress of the Blueprint assignment:`n
+https://portal.azure.com/#blade/Microsoft_Azure_Policy/BlueprintsMenuBlade/BlueprintAssignments" -ForegroundColor Cyan
+} else {
+Write-Host "`nThere was a problem with the Blueprint assignment.
+Please check the error output for possible causes.
+If you believe the problem is with this code,
+please visit the Github repository:`n
+    https://github.com/Azure/AVDBlueprint
+`n and open an issue for collaboration" -ForegroundColor Yellow
+}
+
 #endregion
