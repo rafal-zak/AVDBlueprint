@@ -292,29 +292,26 @@ help .\Remove-AzAvdBpDeployment.ps1
 
 ## Tips
 
-### **Deploying AVD Blueprint to Sovereign Clouds**
+### **Deploying AVD Blueprint to other Azure clouds**
+The single script deployment now includes an option of which cloud you are planning to deploy to:
 
-If you are deploying to AzureUSGovernment, and using an assignment file, you can now change several values in the assignment file and then utilize this Blueprint without having to edit the Blueprint files or Blueprint scripts.
+* AzureChinaCloud
+* AzureCloud
+* AzureGermanCloud
+* AzureUSGovernment
 
-1. Edit the file **'run.config.json'**, changing the **'SubscriptionID'** and **'TenantID'** to the new cloud being deployed to
-1. Edit the assignment file **"assign_default.json"**
-    1. Change **Location** values at the top and bottom of the assignment file to the new location being deployed to (ex. **'usgovarizona'**)
-    1. Change the parameter **'AzureEnvironmentName'** value to 'AzureUSGovernment'
-    1. Change the parameter **'AzureStorageFQDN'** value to 'file.core.usgovcloudapi.net'
-1. Open a PowerShell console:
-    1. Change directory to your customized files
-    1. Connect to your account using PowerShell **'Connect-AzAccount -Environment AzureUSGovernment'**
-1. If you have not yet imported the Blueprint to the new cloud, run the **'import-bp.ps1'** script
-1. Assign the Blueprint with your customized **"assign_default.json"**.
+This blueprint has not yet been tested in 'AzureChinaCloud' or 'AzureGermanCloud'.  However if the Azure Virtual Desktop service is available in those clouds, this Blueprint should run successfully.  There are only three things that would need to be changed to move from one cloud to another.  All three of these changes are in the parameter file 'AVDBPParameters.json':
 
-> [!TIP]
-> If you plan to deploy in both Azure Commercial and AzureGov, it might be easier to create two folders for your customized files (import-bp.ps1, assign-bp.ps1, run.config.json, and assign_default.json).  Example:  
->
-> * C:\VSCode\CustomizedFiles\AzCloud
-> * C:\VSCode\CustomizedFiles\AzGov  
->
-> You change a few values in your "run.config.json" file (SubID, TenantID, path) and you can easily pivot from one cloud to the other.  
-> The path to the Blueprint files themselves can be the same in both sets of files, if you choose this method.
+* TenantID
+* SubscriptionID
+* Azure Active Directory Domain Services domain name
+
+```json
+    "AzureSubscriptionID": "",
+    "AzureTenantID": "",
+    "AADDSDomainName": "",
+```
+You would then save your changes to the parameter file, change directory to 'C:\AVDBlueprint\Examples & Samples\Deploy with Single Script' (or other location where those files exist), then run PowerShell elevated, set you PowerShell Execution Policy if needed, then run the script 'AssignAVDBlueprint.ps1'.
 
 ### **Pre-existing Active Directory**
 
