@@ -384,6 +384,9 @@ Depending on various factors, you may create a managed identity, a storage blob,
 
     Example: AVDBlueprint-RG
 
+* **Blueprint assignment time**
+The AVD Blueprint can take an hour, or sometimes more.  AAD DS takes at least 30 minutes to create, and up to 50 minutes in some cases.  Creating the session hosts takes almost 10 minutes, because of creation but also installing extensions, adding to AVD host pools, etc.  The up-side of session host creation is that they can be created in parallel to some point.  For each "test" user created, there is a key vault created.  The more users created, the longer time it takes.  Each user can take about a minute to create.
+
 ## Recommended Reading
 
 1) [Azure Blueprints](<https://docs.microsoft.com/en-us/azure/governance/blueprints/overview>)
@@ -400,12 +403,14 @@ Depending on various factors, you may create a managed identity, a storage blob,
   * Subscription ID
   * Azure Active Directory Domain Services (AAD DS) domain name.
 
-There are many parameters that remain to be optionally changed.  Otherwise, the script and the blueprint have default values for many other parameters.
+  There are many parameters that remain to be optionally changed.  Otherwise, the script and the blueprint have default values for many other parameters.
 
-**NOTE:** There seems to be a problem with the script hanging, just after the first login to Azure prompt.  This hang issue may have something to do with an account that has multiple subscriptions and also has two-factor authentication enabled.  The workaround for now, is just before you run your script, log in to Azure using the same account that you will log in with during the script execution (Connect-AzAccount).  As the script runs, the first login prompt should then just display that account name with status "signed in".  You can click that and move on without having to enter name and password a second time for that same login.
-This issue has been observed with the PowerShell and the PowerShell ISE that come "in-box" with Windows 10, release 21H1.  In those cases you have to close PowerShell, reopen it, and change directory back to the script folder.  If you are using Visual Studio Code, you can end the PowerShell session and will be prompted to open a new one.  You will still have to change directory back to the folder with the 'AssignAVDBlueprint.ps1' script.
+  **NOTE:** There seems to be a problem with the script hanging, just after the first login to Azure prompt.  This hang issue may have something to do with an account that has multiple subscriptions and also has two-factor authentication enabled.  The workaround for now, is just before you run your script, log in to Azure using the same account that you will log in with during the script execution (Connect-AzAccount).  As the script runs, the first login prompt should then just display that account name with status "signed in".  You can click that and move on without having to enter name and password a second time for that same login.
+  This issue has been observed with the PowerShell and the PowerShell ISE that come "in-box" with Windows 10, release 21H1.  In those cases you have to close PowerShell, reopen it, and change directory back to the script folder.  If you are using Visual Studio Code, you can end the PowerShell session and will be prompted to open a new one.  You will still have to change directory back to the folder with the 'AssignAVDBlueprint.ps1' script.
 
 * Added a folder called **'Examples and Samples'**. Recent updates to the AVD Blueprint mean that the Blueprint files themselves, no longer need any manual edits. And you can use the same Blueprint files for Azure Commercial or Azure US Government.  For your unique values, such as SubscriptionID and so on, you can customize the included sample file **'run.config.json'**.
+
+* Added a parameter option for the Windows Server operating system SKU (release).  This is implemented in the single deployment script as an optional parameter 'PromptForManagementVMOSSku'.  If this parameter value is set to true, the script will prompt at run-time with a list of Server OS Skus available in your selected cloud and location/region.  If this parameter value is set to false, the default is set to '2022-datacenter'.
 
 * Edited the two sample PowerShell scripts that perform the Import, Publish, and Assignment tasks.  The script named "assign-bp.ps1" performs the import and publish functions.  The file "assign-bp.ps1" performs the Blueprint assignment.  Of the remaining two files; "run.config.json" and "assign_default.json" samples, the "run.config.json" would most likely only be edited once, to include your unique values of TenantID, SubscriptionID, BlueprintPath, etc.  The remaining file "assign_default.json" is the only file you need edit afterward to customize the Blueprint experience.  There is a new section in the section of this Readme called **Manage the Blueprint using a local repository of Blueprint files and customized files to import and assign using PowerShell (Windows device)**.
 
