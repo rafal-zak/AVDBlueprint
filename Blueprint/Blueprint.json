@@ -122,10 +122,10 @@
         "type": "string",
         "metadata": {
           "displayName": "Azure Environment Name",
-          "description": "URI where Powershell scripts executed by the blueprint are located (cloud name)."
+          "description": "URI where Powershell scripts executed by the blueprint are located."
         },
         "defaultValue": "AzureCloud",
-        "allowedValues": []
+        "allowedValues": ["AzureCloud", "AzureUSGovernment"]
       },
       "AzureStorageFQDN": {
         "type": "string",
@@ -133,23 +133,16 @@
           "displayName": "Azure Files public endpoint",
           "description": "URI where Powershell scripts executed by the blueprint are located."
         },
-        "defaultValue": "file.core.windows.net"
+        "defaultValue": "file.core.windows.net",
+        "allowedValues": ["file.core.windows.net", "file.core.usgovcloudapi.net"]
       },
       "managementVMOSSku": {
         "type": "string",
         "metadata": {
-          "displayName": "Management VM OS version",
-          "description": "The Windows version of the VM used to manage AAD DS"
+          "displayName": "Management VM OS Sku",
+          "description": "The Windows Sku of the VM used to manage AAD DS"
         },
-        "defaultValue": "2022-datacenter-g2",
-        "allowedValues": [
-          "2022-datacenter",
-          "2022-datacenter-g2",
-          "2019-Datacenter",
-          "2019-datacenter-gensecond",
-          "2016-Datacenter",
-          "2016-datacenter-gensecond"
-          ]
+        "defaultValue": "2022-datacenter",
       },
       "avdHostPool_CreateAvailabilitySet": {
         "type": "bool",
