@@ -42,14 +42,12 @@ There are several required values that are required to be edited to your environ
     `"AzureSubscriptionID": "",`  
     `"AzureTenantID": "",`  
     `"AADDSDomainName": "",`  
-    `"AzureEnvironmentName": "",`  
 
     **Example:**  
 
     `"AzureSubscriptionID": "00000000-0000-0000-0000-000000000000",`  
     `"AzureTenantID": "00000000-0000-0000-0000-000000000000",`  
     `"AADDSDomainName": "avd.contoso.com",`  
-    `"AzureEnvironmentName": "AzureCloud",`  
 
     The remaining parameter values can be used as they are, or you can customize to suit your environment.  The values most likely to be modified first, are in the second "paragraph" of the file 'AVDBPParameters.json'.  In this section you can change the OS version to be deployed, you can change the AVD Azure VM size, number of VMs to create, and more.  Please note that as this file is in JSON format, some formatting rules must be followed:  
 
@@ -395,6 +393,17 @@ Depending on various factors, you may create a managed identity, a storage blob,
 5) [Assign the Blueprint](<https://docs.microsoft.com/en-us/azure/governance/blueprints/create-blueprint-portal>)
 
 ## Change List
+
+* **<mark style="background-color: lightblue">Created a single script that will configure all pre-requisites, import, publish, and assign the Blueprint</mark>**.  There are only 3 required parameters unique to your specific deployment environment:
+
+  * TenantID
+  * Subscription ID
+  * Azure Active Directory Domain Services (AAD DS) domain name.
+
+There are many parameters that remain to be optionally changed.  Otherwise, the script and the blueprint have default values for many other parameters.
+
+**NOTE:** There seems to be a problem with the script hanging, just after the first login to Azure prompt.  This hang issue may have something to do with an account that has multiple subscriptions and also has two-factor authentication enabled.  The workaround for now, is just before you run your script, log in to Azure using the same account that you will log in with during the script execution (Connect-AzAccount).  As the script runs, the first login prompt should then just display that account name with status "signed in".  You can click that and move on without having to enter name and password a second time for that same login.
+This issue has been observed with the PowerShell and the PowerShell ISE that come "in-box" with Windows 10, release 21H1.  In those cases you have to close PowerShell, reopen it, and change directory back to the script folder.  If you are using Visual Studio Code, you can end the PowerShell session and will be prompted to open a new one.  You will still have to change directory back to the folder with the 'AssignAVDBlueprint.ps1' script.
 
 * Added a folder called **'Examples and Samples'**. Recent updates to the AVD Blueprint mean that the Blueprint files themselves, no longer need any manual edits. And you can use the same Blueprint files for Azure Commercial or Azure US Government.  For your unique values, such as SubscriptionID and so on, you can customize the included sample file **'run.config.json'**.
 
