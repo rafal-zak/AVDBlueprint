@@ -112,7 +112,7 @@ $BPScriptParams
 
 ######################################################################################################################################>
 
-
+Write-Host "Checking PowerShell installed modules..." -ForegroundColor Cyan
  #region Checking for the first two required parameters, and if not set, exit script
 if (-not($AADDSDomainName)) {
     Write-Host "`n    Azure Active Directory Domain Services name is null
