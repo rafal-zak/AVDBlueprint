@@ -54,8 +54,8 @@ There are several required values that are required to be edited to your environ
     The remaining parameter values can be used as they are, or you can customize to suit your environment.  The values most likely to be modified first, are in the second "paragraph" of the file 'AVDBPParameters.json'.  In this section you can change the OS version to be deployed, you can change the AVD Azure VM size, number of VMs to create, and more.  Please note that as this file is in JSON format, some formatting rules must be followed:  
 
       - String values (text) must be surrounded by quotation marks
-      - Integer values (numbers) must NOT be surrounded by quotation marks
-      - Boolean values (True/False) must NOT be surrounded by quotation marks
+      - Integer values (numbers) are not surrounded by quotation marks
+      - Boolean values (true/false) are not surrounded by quotation marks, and must be all lower case.
 
 * **Once parameters file editing is complete, save and close the file 'AVDBPParameters.json'**.
 
@@ -77,8 +77,8 @@ Azure Virtual Desktop can be customized in a wide variety of ways. The purpose o
 |-|-|-|-|  
 |AzureSubscriptionID|string|The 'Subscription ID' obtained from Azure Portal or other tools for the destination deployment|Yes|
 |AzureTenantID|string|The 'Tenant ID' obtained from Azure Portal or other tools for the destination deployment|Yes|
-|AzureCloudInstance|string|'AzureCloud'<br/>'AzureUSGovernment'|Yes|
 |AADDSDomainName|string|the name of the AAD DS domain to be created|Yes|
+|PromptForManagementVMOSSku|boolean|Whether or not to prompt for the Windows Server operating system SKU (release) of the management VM. This list is built at run-time based on what cloud is being deployed to and what location. If left to default, the SKU choice is '2022-datacenter'.|No|
 |avdHostPool_vmGalleryImageSKU|string|'19h2-evd-o365pp'<br/>'19h2-evd-o365pp-g2''<br/>'20h1-evd-o365pp'<br/>'20h1-evd-o365pp-g2'<br/>''20h2-evd-o365pp'<br/>'20h2-evd-o365pp-g2'<br/>**'21h1-evd-o365pp'**<br/>'21h1-evd-o365pp-g2'<br/>'19h2-evd'<br/>'19h2-evd-g2'<br/>'20h1-evd'<br/>'20h1-evd-g2'<br/>'20h2-evd'<br/>'20h2-evd-g2'<br/>'21h1-evd'<br/>'21h1-evd-g2'|No (default currently 21H1 with M365)
 |avdHostPool_vmSize|string|[Azure virtual machine size of your choice](https://docs.microsoft.com/en-us/azure/virtual-machines/sizes?WT.mc_id=Portal-fx)|No (default is 'Standard_B4ms')
 |avdHostPool_vmNumberOfInstances|integer|number of AVD VMs to be created by this blueprint|No|
@@ -92,6 +92,8 @@ Azure Virtual Desktop can be customized in a wide variety of ways. The purpose o
 |BlueprintParameterFilePath|string|the name of the parameter file 'AVDBPParameters.json'|No|
 
 ## Prerequisites
+> [!TIP]
+> There is now a single PowerShell script that will configure all pre-requisites and then assign the Blueprint.  The following information is for reference, or in case of configuring manually, or assigning the Blueprint with a method other than the single assignment script.
 
 * **An [Azure tenant](https://docs.microsoft.com/en-us/microsoft-365/education/deploy/intro-azure-active-directory#what-is-an-azure-ad-tenant)**. Though you can create a long tenant domain name prefix, you cannot in AAD DS.  Therefore it is recommended to have your domain name prefix 15 characters or less.  
 If you don't already have a tenant for this deployment, here are some instructions on [setting up an Azure tenant](https://docs.microsoft.com/en-us/azure/active-directory/develop/quickstart-create-new-tenant).
