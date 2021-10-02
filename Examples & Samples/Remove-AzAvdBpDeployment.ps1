@@ -54,6 +54,31 @@ Param(
     [switch] $PurgeKeyVault
 )
 
+if (-not(Get-Module -Name 'Az.Keyvault')) {
+    Install-Module 'Az.Keyvault' -Force
+    Import-Module -Name 'Az.Keyvault' -Force
+}
+if (-not(Get-Module -Name 'Az.Storage')) {
+    Install-Module 'Az.Storage' -Force
+    Import-Module -Name 'Az.Storage' -Force
+}
+if (-not(Get-Module -Name 'Az.Resources')) {
+    Install-Module 'Az.Resources' -Force
+    Import-Module -Name 'Az.Resources' -Force
+}
+if (-not(Get-Module -Name 'Az.OperationalInsights')) {
+    Install-Module 'Az.OperationalInsights' -Force
+    Import-Module -Name 'Az.OperationalInsights' -Force
+}
+if (-not(Get-Module -Name 'AzureAD')) {
+    Install-Module 'AzureAD' -Force
+    Import-Module -Name 'AzureAD' -Force
+}
+if (-not(Get-Module -Name 'Az.DesktopVirtualization')) {
+    Install-Module 'Az.DesktopVirtualization' -Force
+    Import-Module 'Az.DesktopVirtualization' -Force
+}
+
 $RemovalScope = Get-AzResourceGroup | Where-Object {$_.ResourceGroupName -like "$($Prefix)*"} 
 Write-Verbose "Found $($RemovalScope.count) Resource Groups"
 
@@ -95,9 +120,6 @@ $RemovalScope | ForEach-Object {
     
     Write-Verbose "Exporting logs to $LogPath"
     $laws = Get-AzOperationalInsightsWorkspace -Name "$prefix-sharedsvcs-log" -ResourceGroupName $thisrg.ResourceGroupName
-        if(-not(Get-Module Az.OperationalInsights)) {
-        Install-Module Az.OperationalInsights -Force
-        }
     if($PSBoundParameters.ContainsKey('DisableLogExport')){
         Write-Verbose "-DisableLogExport switch called"
     } else {
@@ -112,15 +134,16 @@ $RemovalScope | ForEach-Object {
         }
     }
    
-        Write-Verbose "Now purging key vault (will install Az.Keyvault PowerShell module if not already installed)"
+    Write-Verbose "Now purging key vault"
     if ($PurgeKeyVault) {
-        if (-not(Get-Module -Name Az.Keyvault)) {
-            Install-Module 'Az.Keyvault' -Force
-        }
+        if(-not(Get-AzKeyVault -ResourceGroupName $RemovalScope.ResourceGroupName)) {
+        Write-Host "No key vault found."
+        } else {
         $KeyVaultToPurge = Get-AzKeyVault -ResourceGroupName $RemovalScope.ResourceGroupName
         Write-Verbose "Found '$($KeyVaultToPurge.VaultName)' Key Vault"
         Remove-AzKeyVault -VaultName $KeyVaultToPurge.VaultName -Location $RemovalScope.Location -Force
         Remove-AzKeyVault -InRemovedState -VaultName $KeyVaultToPurge.VaultName -Location $RemovalScope.Location -Force
+        }
     }
 
     if($PSCmdlet.ShouldProcess($_.ResourceGroupName, "Remove ResourceGroup")){

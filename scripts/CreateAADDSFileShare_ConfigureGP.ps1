@@ -27,7 +27,7 @@ Install-WindowsFeature -name GPMC
 Install-WindowsFeature -name RSAT-AD-Tools
 Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force
 Install-Module -Name Az -AllowClobber -Scope AllUsers -Force
-#endregion
+#endregion Install RSAT-AD Tools, GP Tools, setup working folders, and install 'Az' PowerShell modules
 
 #Run most of the following as domainadmin user via invoke-command scriptblock
 $Scriptblock = {
@@ -150,8 +150,8 @@ Connect-AzAccount -Identity -Environment $AzureEnvironmentName
 
 # Download AVD post-install group policy settings zip file, and expand it
 $CTempPath = 'C:\Temp'
-$SoftwareShare = "$CTempPath\Software"
-New-Item -ItemType Directory -Path "$CTempPath\Software" -Force -ErrorAction SilentlyContinue
+New-Item -ItemType Directory -Path "$CTempPath" -ErrorAction SilentlyContinue
+New-Item -ItemType Directory -Path "$CTempPath\Software" -ErrorAction SilentlyContinue
 $AVDPostInstallGPSettingsZip = "$CTempPath\AVD_PostInstall_GP_Settings.zip"
 $ZipFileURI = "$ScriptURI/AVD_PostInstall_GP_Settings.zip"
 Invoke-WebRequest -Uri $ZipFileURI -OutFile "$AVDPostInstallGPSettingsZip"
@@ -160,6 +160,7 @@ Expand-Archive -LiteralPath "$AVDPostInstallGPSettingsZip" -DestinationPath "$CT
 }
 
 # Create a startup script for the session hosts, to run the Virtual Desktop Optimization Tool
+# The next line of code sets the first line of the AVD SH script, with the current computer name in the share path
 $AVDSHSWShare = "$" + "SoftwareShare" + " = " + "'\\$ENV:ComputerName\Software'"
 $AVDSHSWShare | Out-File -FilePath "$CTempPath\PostInstallConfigureAVDSessionHosts.ps1"
 $PostInstallAVDConfig = @'
@@ -173,7 +174,7 @@ If(-not(Test-Path "$env:SystemRoot\System32\Winevt\Logs\Virtual Desktop Optimiza
     Copy-Item "$SoftwareShare\VDOT.zip" $CTempPath
     Expand-Archive -Path $VDOTZIP -DestinationPath $CTempPath
     Get-ChildItem -Path C:\Temp\Virtual* -Recurse -Force | Unblock-File
-    $VDOTString = "$CTempPath\Virtual-Desktop-Optimization-Tool-main\Win10_VirtualDesktop_Optimize.ps1 -AcceptEula -Verbose -Restart"
+    $VDOTString = "$CTempPath\Virtual-Desktop-Optimization-Tool-main\Win10_VirtualDesktop_Optimize.ps1 -AcceptEula -Restart"
     Invoke-Expression $VDOTString
 }
 '@
@@ -190,6 +191,7 @@ Invoke-WebRequest -Uri $VDOTURI -OutFile $VDOTZip
 # Acquire FSLogix software group policy files
 $FSLogixZip = "$CTempPath\FSLogixGPT.zip"
 $FSLogixSW = "$CTempPath\Software\FSLogix"
+$SoftwareShare = "$CTempPath\Software"
 $FSLogixFileURI = "$ScriptURI/FSLogixGPT.zip"
 Invoke-WebRequest -Uri $FSLogixFileURI -OutFile $FSLogixZip
 If (-not(Test-Path "$FSLogixSW")) {
@@ -270,7 +272,7 @@ for ($i = 1; $i -le $vmNumberOfInstances ; $i++) {
     $s = New-PSSession -ComputerName $VMComputerName
     Invoke-Command -Session $s -ScriptBlock {
             gpupdate /force
-            shutdown /r /f /t 60
+            shutdown /r /f /t 15
         }
     Remove-PSSession -Session $s
 }
