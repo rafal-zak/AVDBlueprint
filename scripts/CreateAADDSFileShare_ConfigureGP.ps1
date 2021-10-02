@@ -150,9 +150,8 @@ Connect-AzAccount -Identity -Environment $AzureEnvironmentName
 
 # Download AVD post-install group policy settings zip file, and expand it
 $CTempPath = 'C:\Temp'
-$SoftwareShare = "$CTempPath\Software"
-# Creating two working folders with one command
-New-Item -ItemType Directory -Path "$CTempPath\Software" -Force -ErrorAction SilentlyContinue
+New-Item -ItemType Directory -Path "$CTempPath" -ErrorAction SilentlyContinue
+New-Item -ItemType Directory -Path "$CTempPath\Software" -ErrorAction SilentlyContinue
 $AVDPostInstallGPSettingsZip = "$CTempPath\AVD_PostInstall_GP_Settings.zip"
 $ZipFileURI = "$ScriptURI/AVD_PostInstall_GP_Settings.zip"
 Invoke-WebRequest -Uri $ZipFileURI -OutFile "$AVDPostInstallGPSettingsZip"
@@ -192,6 +191,7 @@ Invoke-WebRequest -Uri $VDOTURI -OutFile $VDOTZip
 # Acquire FSLogix software group policy files
 $FSLogixZip = "$CTempPath\FSLogixGPT.zip"
 $FSLogixSW = "$CTempPath\Software\FSLogix"
+$SoftwareShare = "$CTempPath\Software"
 $FSLogixFileURI = "$ScriptURI/FSLogixGPT.zip"
 Invoke-WebRequest -Uri $FSLogixFileURI -OutFile $FSLogixZip
 If (-not(Test-Path "$FSLogixSW")) {
@@ -272,7 +272,7 @@ for ($i = 1; $i -le $vmNumberOfInstances ; $i++) {
     $s = New-PSSession -ComputerName $VMComputerName
     Invoke-Command -Session $s -ScriptBlock {
             gpupdate /force
-            shutdown /r /f /t 60
+            shutdown /r /f /t 15
         }
     Remove-PSSession -Session $s
 }
