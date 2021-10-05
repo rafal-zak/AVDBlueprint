@@ -41,7 +41,7 @@ There are several required values that are required to be edited to your environ
 
     `"AzureSubscriptionID": "",`  
     `"AzureTenantID": "",`  
-    `"AADDSDomainName": "",` 
+    `"AADDSDomainName": "",`   
     `"BlueprintResourcePrefix": "Please delete this text and enter a 6-8 character random string of text",` 
 
     **Example:**  
@@ -52,7 +52,7 @@ There are several required values that are required to be edited to your environ
     `"BlueprintResourcePrefix": "XYZ12345",`  
     
 > [!IMPORTANT]
-> The parameter 'BlueprintResourcePrefix' should be set to a value unique to your deployment.  The reason is that later in the deployment, a key vault will get created and named "{BlueprintResourcePrefix}-sharedsvcs-kv.  The reason the first characters should be unique to your deployment is to avoid a name collision due to a key vault somewhere else having the same name.  Like Storage Accounts, the key vault name has to be unique to each cloud instance.  We may at some point add code to randomize the key vault name, but still within the 24 character key vault naming limitation.
+> The parameter 'BlueprintResourcePrefix' should be set to a value unique to your deployment.  The reason is that later in the deployment, a key vault will get created and named "$BlueprintResourcePrefix + -sharedsvcs-kv".  The reason the first characters should be unique to your deployment is to avoid a name collision due to a key vault somewhere else having the same name.  Like Storage Accounts, the key vault name has to be unique to each cloud instance.  We may at some point add code to randomize the key vault name, but still within the 24 character key vault naming limitation.
 
     The remaining parameter values can be used as they are, or you can customize to suit your environment.  The values most likely to be modified first, are in the second "paragraph" of the file 'AVDBPParameters.json'.  In this section you can change the OS version to be deployed, you can change the AVD Azure VM size, number of VMs to create, and more.  Please note that as this file is in JSON format, some formatting rules must be followed:  
 
