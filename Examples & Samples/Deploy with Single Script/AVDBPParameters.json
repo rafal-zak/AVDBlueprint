@@ -2,6 +2,7 @@
     "AzureSubscriptionID": "",
     "AzureTenantID": "",
     "AADDSDomainName": "",
+    "BlueprintResourcePrefix": "Please delete this text and enter a 6-8 character random string of text",
     
     "PromptForManagementVMOSSku": false,
     "avdHostPool_vmGalleryImageSKU": "21h1-evd-o365pp",
@@ -9,7 +10,7 @@
     "avdHostPool_vmNumberOfInstances": 2,
     "avdHostPool_maxSessionLimit": 16,
     "avdUsers_userCount": 30,
-    "BlueprintResourcePrefix": "AVDBP01",
+
     "BlueprintGlobalResourceGroupName": "AVD_Blueprint_Global_RG",
     "UserAssignedIdentityName": "UAI1",
     "BlueprintName": "AVDBlueprint",
