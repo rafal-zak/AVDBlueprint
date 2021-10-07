@@ -66,11 +66,11 @@ There are several required values that are required to be edited to your environ
 
 * **Set the PowerShell 'Execution Policy', temporarily, to "Remote Signed" for scope "current user"**  by running either of the following commands:
 
-    `Set-ExecutionPolicy -ExecutionPolicy Remote-Signed -Scope CurrentUser`  
+    `Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser`  
 
-    `Set-ExecutionPolicy -ExecutionPolicy Remote-Signed -Scope Process`
+    `Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope Process`
 
-* **When ready, open and run, or just run the PowerShell script 'AssignAVDBlueprint.json** If you are running on a device that does not have some of the required PowerShell modules, such as AzureAD, Identity, etc., you may be prompted to install those from the [PowerShell Gallery](https://docs.microsoft.com/en-us/powershell/scripting/gallery/overview?view=powershell-7.1).  The PowerShell Gallery a community effort, hosting content from Microsoft, as well as the PowerShell community.
+* **When ready, open and run, or just run the PowerShell script 'AssignAVDBlueprint.ps1** If you are running on a device that does not have some of the required PowerShell modules, such as AzureAD, Identity, etc., you may be prompted to install those from the [PowerShell Gallery](https://docs.microsoft.com/en-us/powershell/scripting/gallery/overview?view=powershell-7.1).  The PowerShell Gallery a community effort, hosting content from Microsoft, as well as the PowerShell community.
 
 ### More information about required and optional parameters
 
