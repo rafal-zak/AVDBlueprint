@@ -1,4 +1,4 @@
-﻿[CmdletBinding()]
+[CmdletBinding()]
 param(
     [Parameter()]
     [string]$AVDBPParamFile = ".\AVDBPParameters.json"
@@ -114,6 +114,7 @@ $BPScriptParams
 
 
 #region Checking for the required parameters, and if not set, exit script
+ Write-Host "Checking PowerShell installed modules..." -ForegroundColor Cyan
 if (-not($AADDSDomainName)) {
     Write-Host "`n    Azure Active Directory Domain Services name is not found
     AAD DS name must be specified in the parameter file 'AVDBPParameters.json'
@@ -539,6 +540,10 @@ Connect-AzureAD -AzureEnvironmentName $AzureEnvironmentName -TenantId $AzureTena
         New-AzResourceGroup -ResourceGroupName $BlueprintGlobalResourceGroupName -Location $ChosenAzureLocation
         } else {
         Write-Host "`Resource Group '$BlueprintGlobalResourceGroupName' already exists." -ForegroundColor Cyan
+        Write-Host "Resource Group $BlueprintGlobalResourceGroupName does not currently exist. Now creating Resource Group" -ForegroundColor Cyan
+        New-AzResourceGroup -ResourceGroupName $BlueprintGlobalResourceGroupName -Location $ChosenAzureLocation
+        } else {
+        Write-Host "Resource Group '$BlueprintGlobalResourceGroupName' already exists." -ForegroundColor Cyan
         $ResourceGroupCheck
     }
 #endregion
@@ -547,13 +552,19 @@ Connect-AzureAD -AzureEnvironmentName $AzureEnvironmentName -TenantId $AzureTena
 $ManagedIdentityCheck = Get-AzUserAssignedIdentity -Name $UserAssignedIdentityName -ResourceGroupName $BlueprintGlobalResourceGroupName -ErrorAction SilentlyContinue
 Write-Host "`nCreating user-assigned managed identity account, that will be the context of the AVD assignment" -ForegroundColor Cyan
     If (-not($ManagedIdentityCheck)){
+$UserAssignedIdentity = Get-AzUserAssignedIdentity -Name $UserAssignedIdentityName -ResourceGroupName $BlueprintGlobalResourceGroupName -ErrorAction SilentlyContinue
+Write-Host "`nCreating user-assigned managed identity account, which will be the context of the AVD assignment" -ForegroundColor Cyan
+    If (-not($UserAssignedIdentity)){
         Write-Host "        Managed identity '$UserAssignedIdentityName' does not currently exist.
         Now creating managed identity '$UserAssignedIdentityName' in resource group '$BlueprintGlobalResourceGroupName'" -ForegroundColor Cyan
         $UserAssignedIdentity = New-AzUserAssignedIdentity -ResourceGroupName $BlueprintGlobalResourceGroupName -Name $UserAssignedIdentityName -Location $ChosenAzureLocation
+        $UserAssignedIdentity
         } else {
         Write-Host "`nUser Assigned Identity '$UserAssignedIdentityName' already exists`n" -ForegroundColor Cyan
         $UserAssignedIdentity = $ManagedIdentityCheck
         $ManagedIdentityCheck
+        Write-Host "`nUser Assigned Identity '$UserAssignedIdentityName' already exists" -ForegroundColor Cyan
+        $UserAssignedIdentity
     }
     $UserAssignedIdentityId = $UserAssignedIdentity.Id
     $ScriptExecutionUserObjectID = $UserAssignedIdentity.PrincipalId
@@ -574,7 +585,24 @@ if (-not($UAMIOwnerSubRoleCheck)){
     Write-Host "User assigned identity '$UserAssignedIdentityName' already has 'Owner' role assigned at the subscription level" -ForegroundColor Cyan
     $UAMIOwnerSubRoleCheck
 }
+#endregion
 
+#region Register the Azure Blueprint provider to the subscription, if not already registered
+Write-Host "Now checking the 'Microsoft.Blueprint' provider, and registering if needed" -ForegroundColor Cyan
+$BlueprintProviderRegistration = Get-AzResourceProvider -ListAvailable | Where-Object {($_.ProviderNamespace -EQ "Microsoft.Blueprint" -and $_.RegistrationState -EQ "Registered")}
+if (-not($BlueprintProviderRegistration)) {
+    Write-Host "The 'Microsoft.Blueprint' provider is not currently registered. Now registering..." -ForegroundColor Cyan
+    Register-AzResourceProvider -ProviderNamespace 'Microsoft.Blueprint'
+    # adding a pause here until the 'Blueprint' provider is in the actual 'Registered' state
+    Do {
+        Write-Host "Pausing to ensure 'Blueprint' provider is in the 'registered' state. waiting 3 seconds..." -ForegroundColor Cyan
+        Start-Sleep -Seconds 3
+        } until (Get-AzResourceProvider -ListAvailable | Where-Object {($_.ProviderNamespace -EQ "Microsoft.Blueprint" -and $_.RegistrationState -EQ "Registered")} -ErrorAction SilentlyContinue)
+    Get-AzResourceProvider -ListAvailable | Where-Object {($_.ProviderNamespace -EQ "Microsoft.Blueprint" -and $_.RegistrationState -EQ "Registered")}
+} else {
+    Write-Host "The 'Microsoft.Blueprint' provider is already registered" -ForegroundColor Cyan
+    $BlueprintProviderRegistration
+}
 #endregion
 
 #region Register the Azure Blueprint provider to the subscription, if not already registered
@@ -592,11 +620,20 @@ if (-not($BlueprintProviderList)) {
 
 #region Grant the 'Blueprint Operator' subscription level role to the managed identity
 Write-Host "Now checking if user assigned identity '$UserAssignedIdentityName' has 'Blueprint Operator' subscription level role assignment" -ForegroundColor Cyan
-if (-not(Get-AzRoleAssignment -ResourceGroupName $BlueprintGlobalResourceGroupName -ObjectID ($UserAssignedIdentity).PrincipalId -RoleDefinitionName 'Blueprint Operator')) {
-    Write-Host "`User assigned identity '$UserAssignedIdentityName' does not currently have 'Blueprint Operator' subscription level role assignment" -ForegroundColor Cyan
-    Write-Host "Now assigning 'Blueprint Operator' role to '$UserAssignedIdentityName'" -ForegroundColor Cyan
+$UAMIBlueprintOperatorRoleCheck = Get-AzUserAssignedIdentity -Name $UserAssignedIdentityName -ResourceGroupName $BlueprintGlobalResourceGroupName
+if (-not($UAMIBlueprintOperatorRoleCheck)) {
+    Do {
+    Write-Host "User assigned identity '$UserAssignedIdentityName' is not currently available, waiting 3 seconds..." -ForegroundColor Cyan
+    Start-Sleep -Seconds 3
+    } until (Get-AzUserAssignedIdentity -Name $UserAssignedIdentityName -ResourceGroupName $BlueprintGlobalResourceGroupName -ErrorAction SilentlyContinue)
+    Write-Host "User Assigned Managed Identity '$UserAssignedIdentityName' is now available..." -ForegroundColor Cyan
+}   
+$UAMIBlueprintOperatorRoleCheck2 = Get-AzRoleAssignment -ResourceGroupName $BlueprintGlobalResourceGroupName -ObjectID ($UserAssignedIdentity).PrincipalId -RoleDefinitionName 'Blueprint Operator'
+if (-not($UAMIBlueprintOperatorRoleCheck2)){
+    Write-Host "Now checking if 'Blueprint Operator' role is currently assigned to '$UserAssignedIdentityName'" -ForegroundColor Cyan
+    Get-AzRoleAssignment -ResourceGroupName $BlueprintGlobalResourceGroupName -ObjectID ($UserAssignedIdentity).PrincipalId -RoleDefinitionName 'Blueprint Operator'
     New-AzRoleAssignment -ObjectId ($UserAssignedIdentity).PrincipalId -RoleDefinitionName 'Blueprint Operator' -Scope "/subscriptions/$AzureSubscriptionID"
-} else {
+} else {    
     Write-Host "User assigned identity '$UserAssignedIdentityName' already has 'Blueprint Operator' role assigned at the subscription level" -ForegroundColor Cyan
     Get-AzRoleAssignment -ResourceGroupName $BlueprintGlobalResourceGroupName -ObjectID ($UserAssignedIdentity).PrincipalId -RoleDefinitionName 'Blueprint Operator' -ErrorAction SilentlyContinue
 }

@@ -192,6 +192,9 @@
       "key-vault-name": "[parameters('key-vault-name')]",
       "key-vault-resourceID": "[resourceId('Microsoft.KeyVault/vaults', variables('key-vault-name'))]",
       "CustomScriptExtensionName": "CreateProfileStoreAndFSLogixPolicy",
+      "ServerImageOffer": "WindowsServer",
+      "ServerImagePublisher": "MicrosoftWindowsServer",
+      "ServerOSVersion": "[parameters('managementVMOSSku')]",
       "existingDomainUsername": "[first(split(parameters('daUser_AdminUser'), '@'))]",
       "managedDomaintoJoin": "[parameters('adds_domainName')]",
       "windowsOSVersion": "[parameters('managementVMOSSku')]",
@@ -575,6 +578,9 @@
     },
     "ouPath": {
       "value": ""
+    },
+    "managementVMOSSku": {
+       "value": "[parameters('managementVMOSSku')]"
     },
     "daUser_AdminUser": {
       "value": "[parameters('daUser_AdminUser')]"

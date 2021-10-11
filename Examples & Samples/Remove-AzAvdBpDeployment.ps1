@@ -54,6 +54,7 @@ Param(
     [switch] $PurgeKeyVault
 )
 
+
 #Trying to work around an issue where the modules were previously installed but don't report that way to PowerShell
 Write-Verbose "Checking PowerShell modules needed to run this script"
 if (-not(Get-Module -Name 'Az.Keyvault')) {

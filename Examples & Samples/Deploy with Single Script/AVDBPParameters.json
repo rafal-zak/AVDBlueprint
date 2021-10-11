@@ -4,8 +4,9 @@
     "AADDSDomainName": "",
     "BlueprintResourcePrefix": "",
 
-    "PromptForManagementVMOSSku": true,
     "PromptForSessionHostOSSku": true,
+    "PromptForManagementVMOSSku": false,
+    "avdHostPool_vmGalleryImageSKU": "21h1-evd-o365pp",
     "avdHostPool_vmSize": "Standard_B4ms",
     "avdHostPool_vmNumberOfInstances": 2,
     "avdHostPool_maxSessionLimit": 16,
