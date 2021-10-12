@@ -22,6 +22,9 @@
           "displayName": "Resource Prefix"
         }
       },
+      "key-vault-name": {
+        "type": "string"
+      },
       "_artifactsLocationSasToken": {
         "type": "securestring",
         "metadata": {
@@ -34,7 +37,7 @@
         "defaultValue": "[utcNow('u')]"
       },
       "managementVMOSSku": {
-        "type": "string",
+        "type": "string"
       },
       "CreateConfigureFileShareAndGPScriptURI": {
         "type": "string"
@@ -76,7 +79,7 @@
         "metadata": {
           "description": "The name of the keyvault that contains the secret."
         },
-        "defaultValue": "[concat(parameters('resourcePrefix'), '-sharedsvcs-kv')]"
+        "defaultValue": "[concat(parameters('resourcePrefix'),uniqueString(subscription().id))]"
       },
       "KVsecretName": {
         "type": "string",
@@ -186,7 +189,7 @@
       "storageAccountName": "[concat(uniquestring(resourceGroup().id, deployment().name))]",
       "deployment-prefix": "[concat(parameters('resourcePrefix'), '-sharedsvcs')]",
       "resourcegroup-name": "[concat(parameters('resourcePrefix'), '-sharedsvcs-rg')]",
-      "key-vault-name": "[concat(variables('deployment-prefix'), '-kv')]",
+      "key-vault-name": "[parameters('key-vault-name')]",
       "key-vault-resourceID": "[resourceId('Microsoft.KeyVault/vaults', variables('key-vault-name'))]",
       "CustomScriptExtensionName": "CreateProfileStoreAndFSLogixPolicy",
       "ServerImageOffer": "WindowsServer",
@@ -194,6 +197,7 @@
       "ServerOSVersion": "[parameters('managementVMOSSku')]",
       "existingDomainUsername": "[first(split(parameters('daUser_AdminUser'), '@'))]",
       "managedDomaintoJoin": "[parameters('adds_domainName')]",
+      "windowsOSVersion": "[parameters('managementVMOSSku')]",
       "resourceGroup": "[resourceGroup().name]",
       "nicName": "[concat(parameters('resourcePrefix'),parameters('mgmtvmNameStatic'),string('-nic'))]",
       "publicIPName": "[concat(parameters('resourcePrefix'),parameters('mgmtvmNameStatic'),string('-pip'))]",
@@ -377,9 +381,9 @@
                     },
                     "storageProfile": {
                     "imageReference": {
-                      "publisher": "[variables('imagePublisher')]",
-                      "offer": "[variables('imageOffer')]",
-                      "sku": "[variables('windowsOSVersion')]",
+                      "publisher": "MicrosoftWindowsServer",
+                      "offer": "WindowsServer",
+                      "sku": "[parameters('managementVMOSSku')]",
                         "version": "latest"
                     },
                     "osDisk": {
@@ -436,7 +440,7 @@
             "fileUris": [
               "[parameters('CreateConfigureFileShareAndGPScriptURI')]"
             ],
-            "commandToExecute": "[concat('powershell.exe -ExecutionPolicy Unrestricted -File CreateAADDSFileShare_ConfigureGP.ps1 -ResourceGroupName ', resourceGroup().name , ' -ScriptURI ',parameters('ScriptURI'), ' -AzureStorageFQDN ',parameters('AzureStorageFQDN'), ' -AzureEnvironmentName ',parameters('AzureEnvironmentName'), ' -vmNumberOfInstances ',parameters('avdHostPool_vmNumberOfInstances'), ' -evdvm_name_prefix ',parameters('avdHostPool_vmNamePrefix'), ' -StorageAccountName ',toLower(substring(concat(parameters('resourcePrefix'),uniqueString(subscription().id)), 0, 14)),' -Verbose')]"
+            "commandToExecute": "[concat('powershell.exe -ExecutionPolicy Unrestricted -File CreateAADDSFileShare_ConfigureGP.ps1 -ResourceGroupName ', resourceGroup().name , ' -ScriptURI ',parameters('ScriptURI'), ' -keyvaultname ',parameters('key-vault-name'), ' -AzureStorageFQDN ',parameters('AzureStorageFQDN'), ' -AzureEnvironmentName ',parameters('AzureEnvironmentName'), ' -vmNumberOfInstances ',parameters('avdHostPool_vmNumberOfInstances'), ' -evdvm_name_prefix ',parameters('avdHostPool_vmNamePrefix'), ' -StorageAccountName ',toLower(substring(concat(parameters('resourcePrefix'),uniqueString(subscription().id)), 0, 14)),' -Verbose')]"
           }
         }
       },
@@ -569,6 +573,9 @@
     "adds_domainName": {
       "value": "[parameters('adds_domainName')]"
     },
+    "key-vault-name": {
+      "value": "[parameters('key-vault-name')]"
+    },
     "ouPath": {
       "value": ""
     },
@@ -601,6 +608,9 @@
     },
     "AzureStorageFQDN": {
       "value": "[parameters('AzureStorageFQDN')]"
+    },
+    "managementVMOSSku": {
+      "value": "[parameters('managementVMOSSku')]"
     },
     "avdHostPool_vmNumberOfInstances": {
       "value": "[parameters('avdHostPool_vmNumberOfInstances')]"
