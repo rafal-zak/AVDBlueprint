@@ -540,10 +540,6 @@ Connect-AzureAD -AzureEnvironmentName $AzureEnvironmentName -TenantId $AzureTena
         New-AzResourceGroup -ResourceGroupName $BlueprintGlobalResourceGroupName -Location $ChosenAzureLocation
         } else {
         Write-Host "`Resource Group '$BlueprintGlobalResourceGroupName' already exists." -ForegroundColor Cyan
-        Write-Host "Resource Group $BlueprintGlobalResourceGroupName does not currently exist. Now creating Resource Group" -ForegroundColor Cyan
-        New-AzResourceGroup -ResourceGroupName $BlueprintGlobalResourceGroupName -Location $ChosenAzureLocation
-        } else {
-        Write-Host "Resource Group '$BlueprintGlobalResourceGroupName' already exists." -ForegroundColor Cyan
         $ResourceGroupCheck
     }
 #endregion
@@ -554,6 +550,7 @@ Write-Host "`nCreating user-assigned managed identity account, that will be the 
     If (-not($ManagedIdentityCheck)){
 $UserAssignedIdentity = Get-AzUserAssignedIdentity -Name $UserAssignedIdentityName -ResourceGroupName $BlueprintGlobalResourceGroupName -ErrorAction SilentlyContinue
 Write-Host "`nCreating user-assigned managed identity account, which will be the context of the AVD assignment" -ForegroundColor Cyan
+}
     If (-not($UserAssignedIdentity)){
         Write-Host "        Managed identity '$UserAssignedIdentityName' does not currently exist.
         Now creating managed identity '$UserAssignedIdentityName' in resource group '$BlueprintGlobalResourceGroupName'" -ForegroundColor Cyan
