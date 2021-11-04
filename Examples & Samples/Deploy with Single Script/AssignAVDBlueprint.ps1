@@ -349,7 +349,7 @@ if ($result -eq [System.Windows.Forms.DialogResult]::OK)
 #region If management VM Sku prompt set true, query and display available Skus
 if ($PromptForManagementVMOSSku){
 Write-Host "`n    Gathering list of available Server Windows Skus..." -ForegroundColor Cyan
-$ServerSkus = Get-AzVMImageSku -Location $ChosenAzureLocation -PublisherName 'MicrosoftWindowsServer' -Offer 'WindowsServer'  | Where-Object {$_.Skus -like "20??-datacenter*" -and $_.Skus -notlike "*core*" -and $_.Skus -notlike "*smalldisk*" -and $_.Skus -notlike "*containers*"} | Select-object -Expandproperty Skus
+$ServerSkus = Get-AzVMImageSku -Location $ChosenAzureLocation -PublisherName 'MicrosoftWindowsServer' -Offer 'WindowsServer'  | Where-Object {$_.Skus -like "20??-?atacenter*" -and $_.Skus -notlike "*core*" -and $_.Skus -notlike "*smalldisk*" -and $_.Skus -notlike "*containers*"} | Select-object -Expandproperty Skus
 
 # Present a pop-up form to select management VM OS Sku to build from
 Add-Type -AssemblyName System.Windows.Forms
