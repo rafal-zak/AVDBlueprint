@@ -53,7 +53,7 @@ $BPScriptParams
 - TITLE:          AVD Blueprint Configuration and Deployment script
 - AUTHORED BY:    Robert M. Smith
 - AUTHORED DATE:  01 September 2021
-- CONTRIBUTORS:   Tim Muessig, Jason Masten, Dennis Payne
+- CONTRIBUTORS:   Tim Muessig, Jason Masten, Dennis Payne, Chris Rutledge
 - LAST UPDATED:   30 September 2021
 - PURPOSE:        A single PowerShell script to perform everything necessary to deploy Azure Virtual Desktop (AVD)
                   into an Azure Subscription
@@ -113,29 +113,39 @@ $BPScriptParams
 ######################################################################################################################################>
 
 
+#region Checking for the required parameters, and if not set, exit script
  Write-Host "Checking PowerShell installed modules..." -ForegroundColor Cyan
- #region Checking for the first two required parameters, and if not set, exit script
 if (-not($AADDSDomainName)) {
-    Write-Host "`n    Azure Active Directory Domain Services name is null
+    Write-Host "`n    Azure Active Directory Domain Services name is not found
     AAD DS name must be specified in the parameter file 'AVDBPParameters.json'
     Your AAD DS prefix name must be 15 characters or less in the format 'domain.contoso.com'
-    This script will now exit." -ForegroundColor Cyan
+    This script will now exit." -ForegroundColor Red
     Return
 }
 
 if (-not($AzureTenantID)) {
     Write-Host "`n    Azure Tenant ID is missing.
     The destination Azure Tenant ID must be present in the  file'AVDBPParameters.json'.
-    This script will now exit." -ForegroundColor Cyan
+    This script will now exit." -ForegroundColor Red
     Return
 }
 
 if (-not($AzureSubscriptionID)) {
     Write-Host "`n    Azure Subscription ID is missing.
     The destination Azure Subscription ID must be present in the  file'AVDBPParameters.json'.
-    This script will now exit." -ForegroundColor Cyan
+    This script will now exit." -ForegroundColor Red
     Return
 }
+
+if (-not($BlueprintResourcePrefix)) {
+    Write-Host "`n    'BlueprintResourcePrefix' parameter value is missing in the parameter file 'AVDBPParameters.json'
+    Please enter a 4-8 character value to be used for the blueprint deployment prefix.
+    This prefix is used in naming some objects during the blueprint deployment, including computer names.
+    Prefixes longer than 8 or 9 characters start to limit number of session hosts VMs that can get created because of name length.
+    This script will now exit." -ForegroundColor Red
+    Return
+}
+
 #endregion
 
 #region Make sure required Az modules are installed
@@ -147,6 +157,8 @@ if (-not($AzureSubscriptionID)) {
     #  - Az.ManagedServiceIdentity
     #  - Az.Resources
     #  - AzureAD
+
+    Write-Host "Checking PowerShell installed modules..." -ForegroundColor Cyan
 
     $AzModuleGalleryMessage = "You may be prompted to install from the PowerShell Gallery`n
     If the Az PowerShell modules were not previously installed you may be prompted to install 'Nuget'.`n
@@ -268,14 +280,6 @@ $AzureEnvironment = Get-AzContext
 $AzureStorageEnvironment = ($AzureEnvironment).Environment.StorageEndpointSuffix
 $AzureStorageFileEnv = 'file.' + $AzureStorageEnvironment
 
-# Set the correct value for 'avdHostPool_vmGalleryImageOffer' based on the VM type being installed'
-if ($avdHostPool_vmGalleryImageSKU -like '*o365pp*')
-{
-    $avdHostPool_vmGalleryImageOffer = "office-365"
-} else {
-    $avdHostPool_vmGalleryImageOffer = "windows-10"
-}
-
 Write-Host "`n    Enumerating list of locations in your environment, that offer the AVD service..." -ForegroundColor Cyan
 $AzureLocations = (Get-AzResourceProvider -ListAvailable | Where-Object {($_.ProviderNamespace -EQ "Microsoft.DesktopVirtualization" -and $_.RegistrationState -EQ "Registered")}).Locations.ToLower() -replace '\s',''
 
@@ -345,7 +349,7 @@ if ($result -eq [System.Windows.Forms.DialogResult]::OK)
 #region If management VM Sku prompt set true, query and display available Skus
 if ($PromptForManagementVMOSSku){
 Write-Host "`n    Gathering list of available Server Windows Skus..." -ForegroundColor Cyan
-$ServerSkus = Get-AzVMImageSku -Location $ChosenAzureLocation -PublisherName 'MicrosoftWindowsServer' -Offer 'WindowsServer'  | Where-Object {$_.Skus -like "20??-datacenter*"}| foreach { $_.Skus}
+$ServerSkus = Get-AzVMImageSku -Location $ChosenAzureLocation -PublisherName 'MicrosoftWindowsServer' -Offer 'WindowsServer'  | Where-Object {$_.Skus -like "20??-datacenter*" -and $_.Skus -notlike "*core*" -and $_.Skus -notlike "*smalldisk*" -and $_.Skus -notlike "*containers*"} | Select-object -Expandproperty Skus
 
 # Present a pop-up form to select management VM OS Sku to build from
 Add-Type -AssemblyName System.Windows.Forms
@@ -415,12 +419,97 @@ $managementVMOSSku = '2022-datacenter'
 }
 #endregion
 
+#region If AVD session host prompt set true, query and display available Skus
+if ($PromptForSessionHostOSSku){
+Write-Host "`n    Gathering list of available Windows session host SKUs..." -ForegroundColor Cyan
+$AVDSHvmsku = Get-AzVMImageSku -Location $ChosenAzureLocation -PublisherName 'MicrosoftWindowsDesktop' -offer 'windows-10' | Where-Object ({$_.Skus -like "*evd*" -and $_.Skus -notlike "*rs5*" -or $_.Skus -like "*avd*"})| Select-Object -ExpandProperty Skus
+$AVDSHvmsku += Get-AzVMImageSku -Location $ChosenAzureLocation -PublisherName 'MicrosoftWindowsDesktop' -offer 'office-365' | Where-Object ({$_.Skus -like "*evd*" -and $_.Skus -notlike "*rs5*" -or $_.Skus -like "*avd*"})| Select-Object -ExpandProperty Skus
+$AVDSHvmsku += Get-AzVMImageSku -Location $ChosenAzureLocation -PublisherName 'MicrosoftWindowsDesktop' -offer 'windows-11' | Where-Object ({$_.Skus -like "*evd*" -and $_.Skus -notlike "*rs5*" -or $_.Skus -like "*avd*"})| Select-Object -ExpandProperty Skus
+
+# Present a pop-up form to select management VM OS Sku to build from
+Add-Type -AssemblyName System.Windows.Forms
+Add-Type -AssemblyName System.Drawing
+
+$form = New-Object System.Windows.Forms.Form
+$form.Text = 'AVD OS Sku'
+$form.Size = New-Object System.Drawing.Size(300,200)
+$form.StartPosition = 'CenterScreen'
+
+$okButton = New-Object System.Windows.Forms.Button
+$okButton.Location = New-Object System.Drawing.Point(75,120)
+$okButton.Size = New-Object System.Drawing.Size(75,23)
+$okButton.Text = 'OK'
+$okButton.DialogResult = [System.Windows.Forms.DialogResult]::OK
+$form.AcceptButton = $okButton
+$form.Controls.Add($okButton)
+
+$cancelButton = New-Object System.Windows.Forms.Button
+$cancelButton.Location = New-Object System.Drawing.Point(150,120)
+$cancelButton.Size = New-Object System.Drawing.Size(75,23)
+$cancelButton.Text = 'Cancel'
+$cancelButton.DialogResult = [System.Windows.Forms.DialogResult]::Cancel
+$form.CancelButton = $cancelButton
+$form.Controls.Add($cancelButton)
+
+$label = New-Object System.Windows.Forms.Label
+$label.Location = New-Object System.Drawing.Point(10,20)
+$label.Size = New-Object System.Drawing.Size(280,20)
+$label.Text = 'Please select AVD OS Sku:'
+$form.Controls.Add($label)
+
+$listBox = New-Object System.Windows.Forms.ListBox
+$listBox.Location = New-Object System.Drawing.Point(10,40)
+$listBox.Size = New-Object System.Drawing.Size(260,20)
+$listBox.Height = 80
+
+ForEach ($A in $AVDSHvmsku){
+Write-Output $A | ForEach-Object {[void] $listBox.Items.Add($_)}
+}
+
+$form.Controls.Add($listBox)
+
+$form.Topmost = $true
+
+$result = $form.ShowDialog()
+
+if ($result -eq [System.Windows.Forms.DialogResult]::CANCEL)
+ {
+    Write-Host "The 'Cancel' button was pressed. The script will now exit." -ForegroundColor Red
+    Return
+ }
+if ($null -eq $listBox.SelectedItem)
+ {
+    Write-Host "    A Windows Server OS Sku was not selected.
+    Please re-run this script and select a Windows OS Sku in the pop-up pick-list" -ForegroundColor Red
+    Return
+ }
+if ($result -eq [System.Windows.Forms.DialogResult]::OK)
+ {
+    $avdHostPool_vmGalleryImageSKU = $listBox.SelectedItem
+    # Set the correct 'ImageOffer' based on the image selected
+if (Get-AzVMImage -Location $ChosenAzureLocation -PublisherName 'MicrosoftWindowsDesktop' -Offer 'windows-10' -Sku $avdHostPool_vmGalleryImageSKU -ErrorAction SilentlyContinue) {
+    $avdHostPool_vmGalleryImageOffer = 'windows-10'
+    } elseif (Get-AzVMImage -Location $ChosenAzureLocation -PublisherName 'MicrosoftWindowsDesktop' -Offer 'windows-11' -Sku $avdHostPool_vmGalleryImageSKU -ErrorAction SilentlyContinue) {
+    $avdHostPool_vmGalleryImageOffer = 'windows-11'
+    } elseif (Get-AzVMImage -Location $ChosenAzureLocation -PublisherName 'MicrosoftWindowsDesktop' -Offer 'office-365' -Sku $avdHostPool_vmGalleryImageSKU -ErrorAction SilentlyContinue) {
+    $avdHostPool_vmGalleryImageOffer = 'office-365'
+}
+
+    Write-Host "Your chosen Windows session host OS Sku is '$avdHostPool_vmGalleryImageSKU'"
+ }
+
+} else {
+$avdHostPool_vmGalleryImageSKU = '21h1-evd-o365pp'
+}
+#endregion
+
 Write-Host "`nThe following parameters will be used, based on the login information provided:
 
 Azure Tenant ID:                  $AzureTenantID
 Azure Subscription ID:            $AzureSubscriptionID
 Azure Cloud Instance:             $AzureEnvironmentName
-Azure Location:                   $ChosenAzureLocation`n" -ForegroundColor Cyan
+Azure Location:                   $ChosenAzureLocation
+`n" -ForegroundColor Cyan
 
 $UserPrincipalName = (Get-AzContext).Account.Id
 #Internal Account
@@ -459,13 +548,20 @@ Connect-AzureAD -AzureEnvironmentName $AzureEnvironmentName -TenantId $AzureTena
 $ManagedIdentityCheck = Get-AzUserAssignedIdentity -Name $UserAssignedIdentityName -ResourceGroupName $BlueprintGlobalResourceGroupName -ErrorAction SilentlyContinue
 Write-Host "`nCreating user-assigned managed identity account, that will be the context of the AVD assignment" -ForegroundColor Cyan
     If (-not($ManagedIdentityCheck)){
+$UserAssignedIdentity = Get-AzUserAssignedIdentity -Name $UserAssignedIdentityName -ResourceGroupName $BlueprintGlobalResourceGroupName -ErrorAction SilentlyContinue
+Write-Host "`nCreating user-assigned managed identity account, which will be the context of the AVD assignment" -ForegroundColor Cyan
+}
+    If (-not($UserAssignedIdentity)){
         Write-Host "        Managed identity '$UserAssignedIdentityName' does not currently exist.
         Now creating managed identity '$UserAssignedIdentityName' in resource group '$BlueprintGlobalResourceGroupName'" -ForegroundColor Cyan
         $UserAssignedIdentity = New-AzUserAssignedIdentity -ResourceGroupName $BlueprintGlobalResourceGroupName -Name $UserAssignedIdentityName -Location $ChosenAzureLocation
+        $UserAssignedIdentity
         } else {
         Write-Host "`nUser Assigned Identity '$UserAssignedIdentityName' already exists`n" -ForegroundColor Cyan
+        $UserAssignedIdentity = $ManagedIdentityCheck
         $ManagedIdentityCheck
-        $UserAssignedIdentity = Get-AzUserAssignedIdentity -ResourceGroupName $BlueprintGlobalResourceGroupName -Name $UserAssignedIdentityName
+        Write-Host "`nUser Assigned Identity '$UserAssignedIdentityName' already exists" -ForegroundColor Cyan
+        $UserAssignedIdentity
     }
     $UserAssignedIdentityId = $UserAssignedIdentity.Id
     $ScriptExecutionUserObjectID = $UserAssignedIdentity.PrincipalId
@@ -486,33 +582,23 @@ if (-not($UAMIOwnerSubRoleCheck)){
     Write-Host "User assigned identity '$UserAssignedIdentityName' already has 'Owner' role assigned at the subscription level" -ForegroundColor Cyan
     $UAMIOwnerSubRoleCheck
 }
-
 #endregion
 
-#region Grant the 'Blueprint Operator' subscription level role to the managed identity
-Write-Host "Now checking if user assigned identity '$UserAssignedIdentityName' has 'Blueprint Operator' subscription level role assignment" -ForegroundColor Cyan
-if (-not(Get-AzRoleAssignment -ResourceGroupName $BlueprintGlobalResourceGroupName -ObjectID ($UserAssignedIdentity).PrincipalId -RoleDefinitionName 'Blueprint Operator')) {
-    Write-Host "`User assigned identity '$UserAssignedIdentityName' does not currently have 'Blueprint Operator' subscription level role assignment" -ForegroundColor Cyan
-    Write-Host "Now assigning 'Blueprint Operator' role to '$UserAssignedIdentityName'" -ForegroundColor Cyan
-    New-AzRoleAssignment -ObjectId ($UserAssignedIdentity).PrincipalId -RoleDefinitionName 'Blueprint Operator' -Scope "/subscriptions/$AzureSubscriptionID"
+#region Register the Azure Blueprint provider to the subscription, if not already registered
+Write-Host "Now checking the 'Microsoft.Blueprint' provider, and registering if needed" -ForegroundColor Cyan
+$BlueprintProviderRegistration = Get-AzResourceProvider -ListAvailable | Where-Object {($_.ProviderNamespace -EQ "Microsoft.Blueprint" -and $_.RegistrationState -EQ "Registered")}
+if (-not($BlueprintProviderRegistration)) {
+    Write-Host "The 'Microsoft.Blueprint' provider is not currently registered. Now registering..." -ForegroundColor Cyan
+    Register-AzResourceProvider -ProviderNamespace 'Microsoft.Blueprint'
+    # adding a pause here until the 'Blueprint' provider is in the actual 'Registered' state
+    Do {
+        Write-Host "Pausing to ensure 'Blueprint' provider is in the 'registered' state. waiting 3 seconds..." -ForegroundColor Cyan
+        Start-Sleep -Seconds 3
+        } until (Get-AzResourceProvider -ListAvailable | Where-Object {($_.ProviderNamespace -EQ "Microsoft.Blueprint" -and $_.RegistrationState -EQ "Registered")} -ErrorAction SilentlyContinue)
+    Get-AzResourceProvider -ListAvailable | Where-Object {($_.ProviderNamespace -EQ "Microsoft.Blueprint" -and $_.RegistrationState -EQ "Registered")}
 } else {
-    Write-Host "User assigned identity '$UserAssignedIdentityName' already has 'Blueprint Operator' role assigned at the subscription level" -ForegroundColor Cyan
-    Get-AzRoleAssignment -ResourceGroupName $BlueprintGlobalResourceGroupName -ObjectID ($UserAssignedIdentity).PrincipalId -RoleDefinitionName 'Blueprint Operator' -ErrorAction SilentlyContinue
-}
-#endregion
-
-#region Assign Azure AD role 'Global Administrator' to the managed identity, to allow creation of AD objects during assignment, if not already assigned
-$AADGlobalAdminRoleInfo = Get-AzureADMSRoleDefinition -Filter "displayName eq 'Global Administrator'"
-$AADGlobalAdminRoleInfoId = $AADGlobalAdminRoleInfo.Id
-$AADGlobalAdminRoleDisplayName = $AADGlobalAdminRoleInfo.displayName
-Write-Host "`Assigning Azure AD role 'Global Administrator' to the managed identity" -ForegroundColor Cyan
-if (-not(Get-AzureADMSRoleAssignment -Filter "principalID eq '$ScriptExecutionUserObjectID' and roleDefinitionId eq '$AADGlobalAdminRoleInfoId'")){
-    Write-Host "User assigned identity"$UserAssignedIdentity.name"does not have the"$AADGlobalAdminRoleInfo.displayName"role currently assigned." -ForegroundColor Cyan
-    Write-Host "Now assigning role to managed identity." -ForegroundColor Cyan
-    New-AzureADMSRoleAssignment -RoleDefinitionId $AADGlobalAdminRoleInfoId -PrincipalId $ScriptExecutionUserObjectID -DirectoryScopeId '/' -ErrorAction SilentlyContinue
-} else {
-    Write-Host "User assigned identity '$UserAssignedIdentityName' already has the '$AADGlobalAdminRoleDisplayName' role assigned." -ForegroundColor Cyan
-    Get-AzureADMSRoleAssignment -Filter "principalID eq '$ScriptExecutionUserObjectID' and roleDefinitionId eq '$AADGlobalAdminRoleInfoId'"
+    Write-Host "The 'Microsoft.Blueprint' provider is already registered" -ForegroundColor Cyan
+    $BlueprintProviderRegistration
 }
 #endregion
 
@@ -526,6 +612,52 @@ if (-not($BlueprintProviderList)) {
 } else {
     Write-Host "The 'Microsoft.Blueprint' provider is already registered" -ForegroundColor Cyan
     $BlueprintProviderList
+}
+#endregion
+
+#region Grant the 'Blueprint Operator' subscription level role to the managed identity
+Write-Host "Now checking if user assigned identity '$UserAssignedIdentityName' has 'Blueprint Operator' subscription level role assignment" -ForegroundColor Cyan
+$UAMIBlueprintOperatorRoleCheck = Get-AzUserAssignedIdentity -Name $UserAssignedIdentityName -ResourceGroupName $BlueprintGlobalResourceGroupName
+if (-not($UAMIBlueprintOperatorRoleCheck)) {
+    Do {
+    Write-Host "User assigned identity '$UserAssignedIdentityName' is not currently available, waiting 3 seconds..." -ForegroundColor Cyan
+    Start-Sleep -Seconds 3
+    } until (Get-AzUserAssignedIdentity -Name $UserAssignedIdentityName -ResourceGroupName $BlueprintGlobalResourceGroupName -ErrorAction SilentlyContinue)
+    Write-Host "User Assigned Managed Identity '$UserAssignedIdentityName' is now available..." -ForegroundColor Cyan
+}   
+$UAMIBlueprintOperatorRoleCheck2 = Get-AzRoleAssignment -ResourceGroupName $BlueprintGlobalResourceGroupName -ObjectID ($UserAssignedIdentity).PrincipalId -RoleDefinitionName 'Blueprint Operator'
+if (-not($UAMIBlueprintOperatorRoleCheck2)){
+    Write-Host "Now checking if 'Blueprint Operator' role is currently assigned to '$UserAssignedIdentityName'" -ForegroundColor Cyan
+    Get-AzRoleAssignment -ResourceGroupName $BlueprintGlobalResourceGroupName -ObjectID ($UserAssignedIdentity).PrincipalId -RoleDefinitionName 'Blueprint Operator'
+    New-AzRoleAssignment -ObjectId ($UserAssignedIdentity).PrincipalId -RoleDefinitionName 'Blueprint Operator' -Scope "/subscriptions/$AzureSubscriptionID"
+} else {    
+    Write-Host "User assigned identity '$UserAssignedIdentityName' already has 'Blueprint Operator' role assigned at the subscription level" -ForegroundColor Cyan
+    Get-AzRoleAssignment -ResourceGroupName $BlueprintGlobalResourceGroupName -ObjectID ($UserAssignedIdentity).PrincipalId -RoleDefinitionName 'Blueprint Operator' -ErrorAction SilentlyContinue
+}
+#endregion
+
+#region Assign Azure AD role 'Global Administrator' to the managed identity, to allow creation of AD objects during assignment, if not already assigned
+$AADGlobalAdminRoleInfo = Get-AzureADMSRoleDefinition -Filter "displayName eq 'Global Administrator'"
+$AADGlobalAdminRoleInfoId = $AADGlobalAdminRoleInfo.Id
+$AADGlobalAdminRoleDisplayName = $AADGlobalAdminRoleInfo.displayName
+
+Write-Host "`Assigning Azure AD role 'Global Administrator' to the managed identity" -ForegroundColor Cyan
+
+$UAMIOwnerSubRoleCheck = Get-AzUserAssignedIdentity -Name $UserAssignedIdentityName -ResourceGroupName $BlueprintGlobalResourceGroupName -ErrorAction SilentlyContinue
+if (-not($UAMIOwnerSubRoleCheck)){
+    Do {
+    Write-Host "Waiting 3 seconds for user assigned managed identity '$UserAssignedIdentityName' to become available for next operation..." -ForegroundColor Cyan
+    Start-Sleep -Seconds 3
+    } until (Get-AzUserAssignedIdentity -Name $UserAssignedIdentityName -ResourceGroupName $BlueprintGlobalResourceGroupName -ErrorAction SilentlyContinue)
+}
+
+if (-not(Get-AzureADMSRoleAssignment -Filter "principalID eq '$ScriptExecutionUserObjectID' and roleDefinitionId eq '$AADGlobalAdminRoleInfoId'")){
+    Write-Host "User assigned identity"$UserAssignedIdentity.name"does not have the"$AADGlobalAdminRoleInfo.displayName"role currently assigned." -ForegroundColor Cyan
+    Write-Host "Now assigning role to managed identity." -ForegroundColor Cyan
+    New-AzureADMSRoleAssignment -RoleDefinitionId $AADGlobalAdminRoleInfoId -PrincipalId $ScriptExecutionUserObjectID -DirectoryScopeId '/' -ErrorAction SilentlyContinue
+} else {
+    Write-Host "User assigned identity '$UserAssignedIdentityName' already has the '$AADGlobalAdminRoleDisplayName' role assigned." -ForegroundColor Cyan
+    Get-AzureADMSRoleAssignment -Filter "principalID eq '$ScriptExecutionUserObjectID' and roleDefinitionId eq '$AADGlobalAdminRoleInfoId'"
 }
 #endregion
 

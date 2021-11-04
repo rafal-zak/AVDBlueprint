@@ -82,6 +82,10 @@
         "defaultValue": "[concat(parameters('resourcePrefix'), '-sharedsvcs-vnet')]",
         "allowedValues": []
       },
+      "key-vault-name": {
+        "type": "string",
+        "defaultValue": "[concat(parameters('resourcePrefix'),uniqueString(subscription().id))]"
+      },
       "script_executionUserResourceID": {
         "type": "string",
         "metadata": {
@@ -142,7 +146,7 @@
           "displayName": "Management VM OS Sku",
           "description": "The Windows Sku of the VM used to manage AAD DS"
         },
-        "defaultValue": "2022-datacenter",
+        "defaultValue": "2022-datacenter"
       },
       "avdHostPool_CreateAvailabilitySet": {
         "type": "bool",
@@ -213,7 +217,7 @@
             2,
             3
         ]
-    },
+      },
       "log-analytics_service-tier": {
         "type": "string",
         "metadata": {
@@ -333,27 +337,9 @@
       },
       "avdHostPool_vmGalleryImageSKU": {
         "type": "string",
-        "allowedValues": [
-          "19h2-evd-o365pp",
-          "19h2-evd-o365pp-g2",
-          "20h1-evd-o365pp",
-          "20h1-evd-o365pp-g2",
-          "20h2-evd-o365pp",
-          "20h2-evd-o365pp-g2",
-          "21h1-evd-o365pp",
-          "21h1-evd-o365pp-g2",
-          "19h2-evd",
-          "19h2-evd-g2",
-          "20h1-evd",
-          "20h1-evd-g2",
-          "20h2-evd",
-          "20h2-evd-g2",
-          "21h1-evd",
-          "21h1-evd-g2"
-      ],
         "metadata": {
-          "displayName": "Azure Gallery image SKU",
-          "description": "20h1=2004, 20h2=2009, 21h1=21h1"
+          "displayName": "AVD session host Gallery OS image SKU",
+          "description": "The Windows version that will be used to create the AVD session hosts"
         },
         "defaultValue": "21h1-evd-o365pp"
       },
