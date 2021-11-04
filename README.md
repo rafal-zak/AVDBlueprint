@@ -41,13 +41,18 @@ There are several required values that are required to be edited to your environ
 
     `"AzureSubscriptionID": "",`  
     `"AzureTenantID": "",`  
-    `"AADDSDomainName": "",`  
+    `"AADDSDomainName": "",`   
+    `"BlueprintResourcePrefix": "Please delete this text and enter a 6-8 character random string of text",` 
 
     **Example:**  
 
     `"AzureSubscriptionID": "00000000-0000-0000-0000-000000000000",`  
     `"AzureTenantID": "00000000-0000-0000-0000-000000000000",`  
     `"AADDSDomainName": "avd.contoso.com",`  
+    `"BlueprintResourcePrefix": "XYZ12345",`  
+    
+> [!IMPORTANT]
+> The parameter 'BlueprintResourcePrefix' should be set to a value unique to your deployment.  The reason is that later in the deployment, a key vault will get created and named "$BlueprintResourcePrefix + -sharedsvcs-kv".  The reason the first characters should be unique to your deployment is to avoid a name collision due to a key vault somewhere else having the same name.  Like Storage Accounts, the key vault name has to be unique to each cloud instance.  We may at some point add code to randomize the key vault name, but still within the 24 character key vault naming limitation.
 
     The remaining parameter values can be used as they are, or you can customize to suit your environment.  The values most likely to be modified first, are in the second "paragraph" of the file 'AVDBPParameters.json'.  In this section you can change the OS version to be deployed, you can change the AVD Azure VM size, number of VMs to create, and more.  Please note that as this file is in JSON format, some formatting rules must be followed:  
 
@@ -61,11 +66,11 @@ There are several required values that are required to be edited to your environ
 
 * **Set the PowerShell 'Execution Policy', temporarily, to "Remote Signed" for scope "current user"**  by running either of the following commands:
 
-    `Set-ExecutionPolicy -ExecutionPolicy Remote-Signed -Scope CurrentUser`  
+    `Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser`  
 
-    `Set-ExecutionPolicy -ExecutionPolicy Remote-Signed -Scope Process`
+    `Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope Process`
 
-* **When ready, open and run, or just run the PowerShell script 'AssignAVDBlueprint.json** If you are running on a device that does not have some of the required PowerShell modules, such as AzureAD, Identity, etc., you may be prompted to install those from the [PowerShell Gallery](https://docs.microsoft.com/en-us/powershell/scripting/gallery/overview?view=powershell-7.1).  The PowerShell Gallery a community effort, hosting content from Microsoft, as well as the PowerShell community.
+* **When ready, open and run, or just run the PowerShell script 'AssignAVDBlueprint.ps1** If you are running on a device that does not have some of the required PowerShell modules, such as AzureAD, Identity, etc., you may be prompted to install those from the [PowerShell Gallery](https://docs.microsoft.com/en-us/powershell/scripting/gallery/overview?view=powershell-7.1).  The PowerShell Gallery a community effort, hosting content from Microsoft, as well as the PowerShell community.
 
 ### More information about required and optional parameters
 
