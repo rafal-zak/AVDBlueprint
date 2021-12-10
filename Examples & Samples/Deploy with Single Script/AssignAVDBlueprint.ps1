@@ -569,8 +569,7 @@ Write-Host "`nCreating user-assigned managed identity account, which will be the
 
 #region Grant the 'Owner' subscription level role to the managed identity
 Write-Host "Now checking if user assigned identity '$UserAssignedIdentityName' has 'Owner' subscription level role assignment" -ForegroundColor Cyan
-$UAMIOwnerSubRoleCheck = Get-AzUserAssignedIdentity -Name $UserAssignedIdentityName -ResourceGroupName $BlueprintGlobalResourceGroupName -ErrorAction SilentlyContinue
-if (-not($UAMIOwnerSubRoleCheck)){
+if (-not(Get-AzRoleAssignment -ResourceGroupName $BlueprintGlobalResourceGroupName | Where {$_.DisplayName -eq $UserAssignedIdentityName -and $_.RoleDefinitionName -eq 'Owner'})){
     Do {
     Write-Host "Waiting 3 seconds for user assigned managed identity '$UserAssignedIdentityName' to become available for next operation..." -ForegroundColor Cyan
     Start-Sleep -Seconds 3
