@@ -321,7 +321,8 @@
         "type": "string",
         "allowedValues": [
            "windows-10",
-           "office-365"
+           "office-365",
+           "windows-11"
           ],
         "metadata": {
           "displayName": "Gallery Image Offer"
