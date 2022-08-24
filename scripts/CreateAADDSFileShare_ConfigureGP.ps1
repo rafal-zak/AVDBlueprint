@@ -216,7 +216,9 @@ New-GPLink -Target $AVDComputersOU.DistinguishedName -Name $AVDPolicy.DisplayNam
 
 # Get credentials and use those to move AVD session hosts to their new OU
 $KeyVault = Get-AzKeyVault -VaultName $keyvaultname
-$DAUserUPN = (Get-AzADGroup -DisplayName "AAD DC Administrators" | Get-AzADGroupMember).UserPrincipalName
+$DAUserUPN = (Get-AzADGroup -DisplayName "AAD DC Administrators" | Get-AzADGroupMember).DisplayName
+$DAUserUPN = (Get-AzADUser -DisplayName $DAUserUPN).UserPrincipalName
+
 $DAUserName = $DAUserUPN.Split('@')[0]
 $DAPass = (Get-AzKeyVaultSecret -VaultName $keyvault.VaultName -name $DAUserName).SecretValue
 $DACredential = New-Object -TypeName System.Management.Automation.PSCredential -ArgumentList $DAUserUPN, $DAPass
@@ -292,7 +294,8 @@ Connect-AzAccount -Identity -Environment $AzureEnvironmentName
 
 #Create a DAuser context, using password from Key Vault
 $KeyVault = Get-AzKeyVault -VaultName $keyvaultname
-$DAUserUPN = (Get-AzADGroup -DisplayName "AAD DC Administrators" | Get-AzADGroupMember).UserPrincipalName
+$DAUserUPN = (Get-AzADGroup -DisplayName "AAD DC Administrators" | Get-AzADGroupMember).DisplayName
+$DAUserUPN = (Get-AzADUser -DisplayName $DAUserUPN).UserPrincipalName
 $DAUserName = $DAUserUPN.Split('@')[0]
 $DAPass = (Get-AzKeyVaultSecret -VaultName $keyvault.VaultName -name $DAUserName).SecretValue
 $DACredential = New-Object -TypeName System.Management.Automation.PSCredential -ArgumentList $DAUserUPN, $DAPass
